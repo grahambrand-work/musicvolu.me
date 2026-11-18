@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Musicvolu.me design tokens, taken from the Figma file (page "Drafts by Claude"). */
+@theme {
+  --color-ink: #000000;
+  --color-teal: #5cc7bd;          /* "edit in review" dot, In review status */
+  --color-mbsync: #999999;        /* the import bot's name */
+  --color-line: rgb(255 255 255 / 0.12);   /* header border, column divider */
+  --color-rule: rgb(255 255 255 / 0.15);   /* line above a list of fields */
+  --color-hair: rgb(255 255 255 / 0.08);   /* line between fields */
+
+  /* Jost for the interface; Courier Prime for anything a person could edit
+     (titles, names, dates, labels, durations) and for usernames. */
+  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Courier Prime", "Courier New", ui-monospace, monospace;
+}
+
+html {
+  background: var(--color-ink);
+  color: #fff;
+  color-scheme: dark;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* Field labels: Jost Medium 12, uppercase, 6% tracking, half-white. */
+@utility field-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* Text boxes get 16px text on phones so iPhone Safari doesn't zoom in when one is tapped. */
+@media (width < 48rem) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(40%); opacity: 0.4; }
+  to { transform: none; opacity: 1; }
+}
