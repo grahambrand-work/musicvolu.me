@@ -6,10 +6,11 @@ import type { HistoryItem, Kind, Source } from "@/lib/catalog";
 import { shortDate, shortId } from "@/lib/format";
 import { suggestHref } from "@/lib/links";
 import { ClockIcon, PencilIcon } from "./icons";
+import SuggestEdit from "./SuggestEdit";
 import { Cover, ReviewDot, Tag } from "./ui";
 
-export function EntryPage({ kind, slug, q, cover, round, tag, title, sub, source, history, pending, children }: {
-  kind: Kind; slug: string; q?: string;
+export function EntryPage({ kind, slug, q, signedIn, cover, round, tag, title, sub, source, history, pending, children }: {
+  kind: Kind; slug: string; q?: string; signedIn: boolean;
   cover: string | null; round?: boolean; tag: string; title: string;
   /** The grey line under the title. Editable values in Courier, counts in Jost. */
   sub: ReactNode;
@@ -30,14 +31,14 @@ export function EntryPage({ kind, slug, q, cover, round, tag, title, sub, source
           <h1 className="mt-1.5 font-mono text-[28px] leading-[1.1] font-bold break-words md:mt-2 md:text-[44px]">{title}</h1>
           <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[14px] text-white/80 md:mt-3 md:text-[16px]">{sub}</p>
         </div>
-        <Link href={suggestHref(kind, slug)} className="mt-14 hidden shrink-0 items-center gap-1.5 rounded-full border border-white/50 py-1.5 pr-3.5 pl-3 text-[14px] hover:border-white hover:bg-white/5 md:inline-flex">
+        <SuggestEdit href={suggestHref(kind, slug)} signedIn={signedIn} className="mt-14 hidden shrink-0 items-center gap-1.5 rounded-full border border-white/50 py-1.5 pr-3.5 pl-3 text-[14px] hover:border-white hover:bg-white/5 md:inline-flex">
           <PencilIcon /> Suggest edits
-        </Link>
+        </SuggestEdit>
       </div>
 
-      <Link href={suggestHref(kind, slug)} className="mt-6 flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/50 text-[14px] md:hidden">
+      <SuggestEdit href={suggestHref(kind, slug)} signedIn={signedIn} className="mt-6 flex h-10 w-full items-center justify-center gap-1.5 rounded-full border border-white/50 text-[14px] md:hidden">
         <PencilIcon /> Suggest edits
-      </Link>
+      </SuggestEdit>
 
       <div className="mt-5 flex flex-col gap-10 md:mt-9 md:flex-row md:gap-[60px]">
         <div className="flex min-w-0 flex-1 flex-col gap-10 md:gap-12">

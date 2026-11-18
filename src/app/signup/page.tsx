@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
-import ComingSoon from "@/components/ComingSoon";
+import { redirect } from "next/navigation";
+import AuthShell from "@/components/AuthShell";
+import { getViewer } from "@/lib/viewer";
+import SignupForm from "./SignupForm";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default function SignupPage() {
-  return <ComingSoon title="Create account">Accounts are coming in the next update. Until then you can search and browse everything.</ComingSoon>;
+export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
+  const next = (await searchParams).next;
+  if (await getViewer()) redirect(typeof next === "string" ? next : "/");
+  return (
+    <AuthShell title="Create your account" intro="Free. Start suggesting edits right away.">
+      <SignupForm next={typeof next === "string" ? next : ""} />
+    </AuthShell>
+  );
 }

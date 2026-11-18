@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import { getViewer } from "@/lib/viewer";
 import { Dot, EntryPage } from "@/components/Entry";
 import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
 import { getRelease } from "@/lib/catalog";
@@ -16,6 +17,7 @@ export async function generateMetadata({ params }: PageProps<"/release/[slug]">)
 export default async function ReleasePage({ params, searchParams }: PageProps<"/release/[slug]">) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const q = typeof sp.q === "string" ? sp.q : undefined;
+  const viewer = await getViewer();
   const r = await getRelease(slug);
   if (r === null) notFound();
   const discs = r ? new Set(r.tracks.map((t) => t.disc)).size : 0;
@@ -23,7 +25,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
     <>
       <Header q={q} />
       {!r ? <NoDatabase /> : (
-        <EntryPage kind="release" slug={slug} q={q} cover={r.cover ?? r.coverSmall} tag={r.type} title={r.title}
+        <EntryPage signedIn={!!viewer} kind="release" slug={slug} q={q} cover={r.cover ?? r.coverSmall} tag={r.type} title={r.title}
           source={r.source} history={r.history} pending={r.pending}
           sub={<>
             <span className="font-mono">{r.artists.map((a, i) => <span key={a.slug}>{i > 0 && ", "}<Link href={`/artist/${a.slug}`} className="hover:underline">{a.name}</Link></span>)}</span>

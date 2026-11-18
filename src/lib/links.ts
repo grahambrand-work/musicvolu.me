@@ -1,6 +1,5 @@
-// Where "Suggest edit" goes. Editing arrives with accounts; until then (and for anyone
-// signed out) it asks people to log in first and then brings them back to the entry.
+// Where "Suggest edit" goes: the entry page in edit mode. Signed-out visitors see the
+// "Create an account to suggest edits" dialog first (components/SuggestEdit.tsx).
 export function suggestHref(kind: string, slug: string, focus?: string) {
-  const back = `/${kind}/${slug}?edit=1${focus ? `&focus=${focus}` : ""}`;
-  return `/login?next=${encodeURIComponent(back)}`;
+  return `/${kind}/${slug}?edit=1${focus ? `&focus=${focus}` : ""}`;
 }

@@ -1,16 +1,14 @@
-// Who is looking at the page. Accounts (email sign-up, log in) arrive in the next step; until
-// then everyone is signed out, so pages show "Log in" and "Create account".
+// Who is looking at the page, and how their role shows (name colour + badge).
 import "server-only";
+import { currentMember, type Member } from "./auth/session";
 
-export type Role = "contributor" | "editor" | "admin";
-export type Viewer = { username: string; role: Role; tier: 1 | 2 | 3 };
+export type Role = Member["role"];
+export type Viewer = Member;
 
+/** Signed in with a confirmed email, or null. */
 export async function getViewer(): Promise<Viewer | null> {
-  return null;
+  const m = await currentMember();
+  return m && m.emailVerified ? m : null;
 }
 
-/** "Tier 1 Contributor", "Tier 2 Editor", "Admin". */
-export function roleLabel(v: Viewer) {
-  if (v.role === "admin") return "Admin";
-  return `Tier ${v.tier} ${v.role === "editor" ? "Editor" : "Contributor"}`;
-}
+export { roleLabel, tierColor } from "./roles";

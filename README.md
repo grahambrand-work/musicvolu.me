@@ -29,7 +29,23 @@ and admins publish it into the catalog. Designs live in the Figma file "Musicvol
 | Song | `/song/[slug]` | Phase 2 Song view |
 | Password screen | `/gate` | Home style |
 
-Log in, Create account and Contribute are placeholders until the accounts step.
+| Create account → check email → confirm → Welcome | `/signup`, `/signup/check`, `/verify`, `/welcome` | P7 |
+| Log in, forgot / reset password | `/login`, `/forgot-password`, `/reset-password` | P7 |
+
+Contribute is still a placeholder.
+
+## Accounts
+
+Musicvolu.me has its own members, separate from Noteworthy's logins: email and password
+only. Tables live in the `musicvolume` schema (`db/migrations/`): `members` (username,
+email, scrypt password hash, role contributor/editor/admin and tier 1-3), `sessions`
+(only a SHA-256 of each browser's cookie token is stored) and `email_tokens` (confirm
+email, 24 h; reset password, 1 h). Eight wrong passwords in a row lock an account for 15
+minutes. Code: `src/lib/auth/`.
+
+Apply a migration as the database owner. The site itself should connect as its own
+login, `musicvolume_app`, which the migration grants: read the catalog, read and write
+`musicvolume`. Supabase's public API roles get no access to the schema.
 
 ## Run it on your own computer
 

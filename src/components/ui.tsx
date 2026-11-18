@@ -1,7 +1,5 @@
 // Small building blocks shared by every page, matching the "Draft components" frame in Figma.
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { PencilIcon } from "./icons";
 
 /** Outlined type tag: ALBUM, ARTIST, SONG… (Jost Medium 11, 6% tracking). */
 export function Tag({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -26,16 +24,6 @@ export function Cover({ src, size, round = false, className = "" }: { src?: stri
     <span aria-hidden className={`relative grid shrink-0 place-items-center bg-[linear-gradient(135deg,#383d40_0%,#1a1c1f_50%)] ${shape} ${className}`} style={{ width: size, height: size }}>
       <span className="rounded-full border border-white/18" style={{ width: size * 0.4, height: size * 0.4 }} />
     </span>
-  );
-}
-
-/** The outlined "Suggest edit" pill with a pencil. */
-export function SuggestEditLink({ href, label = "Suggest edit", className = "" }: { href: string; label?: string; className?: string }) {
-  return (
-    <Link href={href} className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-white/35 py-[5px] pr-3 pl-2.5 text-[13px] text-white transition-colors hover:border-white hover:bg-white/5 ${className}`}>
-      <PencilIcon />
-      {label}
-    </Link>
   );
 }
 

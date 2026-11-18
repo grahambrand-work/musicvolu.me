@@ -34,9 +34,15 @@ export default async function HomePage() {
               <span className="rounded-full bg-white px-3 py-0.5 text-[13px] text-black">{roleLabel(viewer)}</span>
             </p>
           ) : (
-            <p className="mt-2 text-center text-[14px] leading-[1.45] text-white/70 md:-mx-4">
-              An open, reviewed database of music info. Anyone can search it. Members suggest edits, and editors check every one.
-            </p>
+            <>
+              <p className="mt-2 hidden text-center text-[14px] leading-[1.45] text-white/70 md:-mx-4 md:block">
+                An open, reviewed database of music info. Anyone can search it. Members suggest edits, and editors check every one.
+              </p>
+              <div className="mt-2 flex justify-center gap-2.5 md:hidden">
+                <Link href="/login" className="rounded-full border border-white/70 px-3.5 py-[5px] text-[14px]">Log in</Link>
+                <Link href="/signup" className="rounded-full bg-white px-3.5 py-[5px] text-[14px] text-black">Create account</Link>
+              </div>
+            </>
           )}
         </div>
       </main>
