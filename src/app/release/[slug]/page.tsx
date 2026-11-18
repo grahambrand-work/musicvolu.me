@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import EditMode from "@/components/EditMode";
 import { getViewer } from "@/lib/viewer";
 import { Dot, EntryPage } from "@/components/Entry";
 import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
@@ -17,16 +18,18 @@ export async function generateMetadata({ params }: PageProps<"/release/[slug]">)
 export default async function ReleasePage({ params, searchParams }: PageProps<"/release/[slug]">) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const q = typeof sp.q === "string" ? sp.q : undefined;
-  const viewer = await getViewer();
+  const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const r = await getRelease(slug);
   if (r === null) notFound();
+  if (r && str("edit")) return <EditMode kind="release" slug={slug} focus={str("focus")} tag={r.type} />;
+  const viewer = await getViewer();
   const discs = r ? new Set(r.tracks.map((t) => t.disc)).size : 0;
   return (
     <>
       <Header q={q} />
       {!r ? <NoDatabase /> : (
         <EntryPage signedIn={!!viewer} kind="release" slug={slug} q={q} cover={r.cover ?? r.coverSmall} tag={r.type} title={r.title}
-          source={r.source} history={r.history} pending={r.pending}
+          source={r.source} history={r.history} pending={r.pending} submitted={str("submitted")}
           sub={<>
             <span className="font-mono">{r.artists.map((a, i) => <span key={a.slug}>{i > 0 && ", "}<Link href={`/artist/${a.slug}`} className="hover:underline">{a.name}</Link></span>)}</span>
             {r.year && <><Dot /><span className="font-mono">{r.year}</span></>}
@@ -39,6 +42,9 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
               { label: "Artist", value: r.artists.map((a) => a.name).join(", ") },
               { label: "Type", value: r.type },
               { label: "Release date", value: isoDate(r.releaseDate) || (r.year ? String(r.year) : "") },
+              { label: "Label", value: r.label ?? "" },
+              { label: "Country", value: r.country ?? "" },
+              { label: "Language", value: r.language ?? "" },
               { label: "Genres", value: genreList(r.genres) },
               ...(r.editions ? [{ label: "Editions", value: `${r.editions} other edition${r.editions === 1 ? "" : "s"}` }] : []),
             ]} />
