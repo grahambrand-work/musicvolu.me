@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { suggestAction } from "@/app/actions";
 import type { Hit } from "@/lib/catalog";
+import { hitHref } from "@/lib/links";
 import { ArrowIcon, SearchIcon } from "./icons";
-import { Cover } from "./ui";
+import { Cover, ReviewDot } from "./ui";
 
 type Groups = { artists: Hit[]; releases: Hit[]; songs: Hit[] };
 
@@ -49,7 +50,7 @@ export default function SearchBox({ initial = "", variant = "header", autoFocus 
   // Fewer than 2 letters: no dropdown (old results are kept but hidden).
   const groups = q.trim().length >= 2 ? found : null;
   const flat = groups ? [...groups.artists, ...groups.releases, ...groups.songs] : [];
-  const href = (h: Hit) => `/${h.kind}/${h.slug}?q=${encodeURIComponent(q.trim())}`;
+  const href = (h: Hit) => `${hitHref(h)}?q=${encodeURIComponent(q.trim())}`;
   const go = (path: string) => { setOpen(false); router.push(path); };
 
   const submit = (e: React.FormEvent) => {
@@ -106,7 +107,7 @@ export default function SearchBox({ initial = "", variant = "header", autoFocus 
                     className={`flex items-center gap-3 px-4 py-1.5 ${i === active ? "bg-white/9" : ""}`}>
                     <Cover src={h.cover} size={32} round={h.kind === "artist"} />
                     <span className="min-w-0 leading-tight">
-                      <span className="block truncate font-mono text-[14px] text-white">{h.title}</span>
+                      <span className="flex items-center gap-2 truncate font-mono text-[14px] text-white">{h.title}{h.review && <ReviewDot />}</span>
                       <span className="block truncate font-mono text-[12px] text-white/55">
                         {[h.kind === "release" ? cap(h.tag) : h.kind === "artist" ? "Artist" : "Song", ...h.sub.filter((s) => !/tracks?$|releases?$/.test(s))].join(" · ")}
                       </span>

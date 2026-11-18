@@ -9,6 +9,7 @@ import {
   CREDIT_ROLES, FIELDS, SUGGEST, countChanges, describeChanges, normalize,
   type Change, type CreditRow, type Kind, type ReleaseValues, type SongValues, type TrackRow, type Values,
 } from "@/lib/edits";
+import { parseTracklist } from "@/lib/newEntry";
 import { PlusIcon } from "./icons";
 import { Cover, Tag } from "./ui";
 
@@ -21,9 +22,9 @@ type Props = {
   children?: ReactNode;
 };
 
-const box = "rounded-[4px] border bg-[#0b0b0c] px-3 font-mono text-[14px] text-white outline-none placeholder:text-white/30 focus:border-white/80";
-const boxH = "h-[34px]";
-const border = (changed: boolean, err?: string) => (err ? "border-[#eb544d]" : changed ? "border-teal" : "border-white/25");
+export const box = "rounded-[4px] border bg-[#0b0b0c] px-3 font-mono text-[14px] text-white outline-none placeholder:text-white/30 focus:border-white/80";
+export const boxH = "h-[34px]";
+export const border = (changed: boolean, err?: string) => (err ? "border-[#eb544d]" : changed ? "border-teal" : "border-white/25");
 
 export default function EditEntry({ kind, slug, name, tag, cover, round, initial, fixed, allowance, focus, children }: Props) {
   const [values, setValues] = useState<Values>(initial);
@@ -211,7 +212,7 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
   );
 }
 
-function Select({ id, value, onChange, options, className, autoFocus }: {
+export function Select({ id, value, onChange, options, className, autoFocus }: {
   id?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; className: string; autoFocus?: boolean;
 }) {
   return (
@@ -234,7 +235,7 @@ function Chevron({ className }: { className?: string }) {
   );
 }
 
-function XIcon() {
+export function XIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
       <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -251,9 +252,16 @@ function Grip() {
 }
 
 /** Tracks: rename, change length, drag (or arrow keys on the handle) to reorder, remove, add. */
-function Tracklist({ rows, initial, errors, onChange, newId }: {
+export function Tracklist({ rows, initial, errors, onChange, newId, plain = false, paste = false, heading = true }: {
   rows: TrackRow[]; initial: TrackRow[]; errors: Record<string, string>; onChange: (rows: TrackRow[]) => void; newId: () => string;
+  /** New entries: no teal "changed" outlines. */
+  plain?: boolean;
+  /** Offer "or paste a whole tracklist". */
+  paste?: boolean;
+  heading?: boolean;
 }) {
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState("");
   const old = useMemo(() => new Map(initial.map((t) => [t.id, t])), [initial]);
   const refs = useRef<(HTMLLIElement | null)[]>([]);
   const [drag, setDrag] = useState<number | null>(null);
@@ -275,17 +283,17 @@ function Tracklist({ rows, initial, errors, onChange, newId }: {
   }, [rows.length]);
 
   return (
-    <section className="mt-12">
+    <section className={heading ? "mt-12" : ""}>
       <div className="flex items-baseline justify-between pb-3">
-        <h2 className="field-label">Tracklist · {rows.length}</h2>
+        {heading ? <h2 className="field-label">Tracklist · {rows.length}</h2> : <span />}
         {rows.length > 1 && <span className="text-[13px] text-white/50">Drag to reorder</span>}
       </div>
       {errors.tracks && <p role="alert" className="pb-2 text-[12px] text-[#ff8a80]">{errors.tracks}</p>}
       <ol className="flex flex-col gap-1.5">
         {rows.map((t, i) => {
           const o = old.get(t.id);
-          const titleChanged = !o || o.title !== t.title.trim();
-          const lenChanged = !o || o.duration !== t.duration.trim();
+          const titleChanged = !plain && (!o || o.title !== t.title.trim());
+          const lenChanged = !plain && (!o || o.duration !== t.duration.trim());
           const err = errors[`track:${t.id}`];
           return (
             <li key={t.id} ref={(el) => { refs.current[i] = el; }} className={drag === i ? "opacity-70" : undefined}>
@@ -328,17 +336,37 @@ function Tracklist({ rows, initial, errors, onChange, newId }: {
           );
         })}
       </ol>
-      <button type="button" onClick={() => { const id = newId(); added.current = id; onChange([...rows, { id, title: "", duration: "" }]); }}
-        className="mt-2 flex h-[38px] w-full items-center gap-2 rounded-[6px] border border-dashed border-white/25 px-3.5 text-[14px] hover:border-white/60">
-        <PlusIcon /> Add a track
-      </button>
+      <div className="mt-2 flex h-[38px] w-full items-center gap-2 rounded-[6px] border border-dashed border-white/25 px-3.5 text-[14px] hover:border-white/60">
+        <button type="button" className="flex items-center gap-2" onClick={() => { const id = newId(); added.current = id; onChange([...rows, { id, title: "", duration: "" }]); }}>
+          <PlusIcon /> Add a track
+        </button>
+        {paste && <><span className="text-white/40">·</span><button type="button" onClick={() => setPasting((x) => !x)} className="text-white/70 hover:text-white">or paste a whole tracklist</button></>}
+      </div>
+      {pasting && (
+        <div className="mt-2 rounded-[6px] border border-white/20 p-3">
+          <label htmlFor="paste-tracks" className="text-[13px] text-white/70">One track per line. Numbers and lengths like “3:41” are picked up.</label>
+          <textarea id="paste-tracks" value={pasted} onChange={(e) => setPasted(e.target.value)} rows={6} autoFocus
+            placeholder={"1. Undertow 3:41\n2. Low Tide Letters 4:05"}
+            className="mt-2 w-full rounded-[4px] border border-white/25 bg-[#0b0b0c] px-3 py-2 font-mono text-[14px] outline-none focus:border-white/80" />
+          <div className="mt-2 flex gap-2">
+            <button type="button" className="rounded-full bg-white px-3.5 py-1.5 text-[14px] font-medium text-black disabled:opacity-50" disabled={!pasted.trim()}
+              onClick={() => {
+                const found = parseTracklist(pasted);
+                onChange([...rows.filter((r) => r.title.trim() || r.duration.trim()), ...found.map((t) => ({ id: newId(), ...t }))]);
+                setPasted(""); setPasting(false);
+              }}>Add these tracks</button>
+            <button type="button" onClick={() => setPasting(false)} className="rounded-full border border-white/40 px-3.5 py-1.5 text-[14px]">Cancel</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
 /** Song credits: role + name rows. */
-function Credits({ rows, initial, errors, onChange, newId }: {
+export function Credits({ rows, initial, errors, onChange, newId, plain = false }: {
   rows: CreditRow[]; initial: CreditRow[]; errors: Record<string, string>; onChange: (rows: CreditRow[]) => void; newId: () => string;
+  plain?: boolean;
 }) {
   const old = useMemo(() => new Map(initial.map((c) => [c.id, c])), [initial]);
   const update = (i: number, patch: Partial<CreditRow>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -349,7 +377,7 @@ function Credits({ rows, initial, errors, onChange, newId }: {
       <ul className="flex flex-col gap-2">
         {rows.map((c, i) => {
           const o = old.get(c.id);
-          const changed = !o || o.role !== c.role || o.name !== c.name.trim();
+          const changed = !plain && (!o || o.role !== c.role || o.name !== c.name.trim());
           const err = errors[`credit:${c.id}`];
           return (
             <li key={c.id}>
@@ -363,7 +391,7 @@ function Credits({ rows, initial, errors, onChange, newId }: {
                 <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={`Remove credit ${i + 1}`}
                   className="grid size-6 shrink-0 place-items-center text-white/50 hover:text-white"><XIcon /></button>
               </div>
-              {err ? <p role="alert" className="mt-1 text-[12px] text-[#ff8a80]">{err}</p> : !o && <p className="mt-1 pl-[138px] text-[12px] text-teal md:pl-[174px]">New</p>}
+              {err ? <p role="alert" className="mt-1 text-[12px] text-[#ff8a80]">{err}</p> : !o && !plain && <p className="mt-1 pl-[138px] text-[12px] text-teal md:pl-[174px]">New</p>}
             </li>
           );
         })}

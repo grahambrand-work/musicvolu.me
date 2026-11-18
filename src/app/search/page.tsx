@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import SearchBox from "@/components/SearchBox";
 import { Cover, NoDatabase, Tag } from "@/components/ui";
 import { searchCatalog, type Hit, type SearchFilter } from "@/lib/catalog";
+import { hitHref } from "@/lib/links";
 import Preview from "./Preview";
 import PhoneSheet from "./PhoneSheet";
 
@@ -34,8 +35,8 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
     return `/search?${p}`;
   };
   const keyOf = (h: Hit) => `${h.kind}:${h.slug}`;
-  const selected = hits?.find((h) => keyOf(h) === open) ?? null;
-  const shown = selected ?? hits?.[0] ?? null; // desktop always previews something
+  const selected = hits?.find((h) => keyOf(h) === open && !h.review) ?? null;
+  const shown = selected ?? hits?.find((h) => !h.review) ?? null; // desktop always previews something
 
   return (
     <>
@@ -75,12 +76,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
                 const isShown = shown && keyOf(h) === keyOf(shown);
                 return (
                   <li key={keyOf(h)} className="border-b border-white/10 md:border-0">
-                    <Link href={qs({ open: keyOf(h) })} scroll={false}
+                    <Link href={h.review ? hitHref(h) : qs({ open: keyOf(h) })} scroll={false}
                       className={`flex items-center gap-3.5 px-4 py-[9px] md:rounded-[8px] md:px-3 ${isShown ? "md:bg-white/9" : "md:hover:bg-white/5"}`}>
                       <Cover src={h.cover} size={40} round={h.kind === "artist"} />
                       <span className="min-w-0 flex-1 leading-tight">
                         <span className="block truncate font-mono text-[15px] font-bold">{h.title}</span>
-                        <span className="mt-0.5 block truncate font-mono text-[12px] text-white/55">{h.sub.join(" · ")}</span>
+                        <span className="mt-0.5 block truncate font-mono text-[12px] text-white/55">
+                          {h.review ? <><span className="font-sans text-teal">In review</span>{h.sub.slice(1).map((x) => ` · ${x}`)}</> : h.sub.join(" · ")}
+                        </span>
                       </span>
                       <Tag>{h.tag}</Tag>
                     </Link>

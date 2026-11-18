@@ -49,7 +49,8 @@ create table if not exists musicvolume.submissions (
   -- A new release or song by an artist that is itself still a submission.
   depends_on   uuid references musicvolume.submissions (id),
   changes      jsonb not null,
-  note         text check (char_length(note) <= 4000),
+  note         text check (char_length(note) <= 4000),       -- note for editors
+  sources      text check (char_length(sources) <= 2000),    -- where the information came from (new entries)
   status       text not null default 'needs_review'
                check (status in ('needs_review', 'in_review', 'changes_requested', 'final_review', 'published', 'rejected', 'withdrawn')),
   reviewer_id  uuid references musicvolume.members (id),
@@ -60,6 +61,7 @@ create table if not exists musicvolume.submissions (
 );
 create index if not exists submissions_entity_idx on musicvolume.submissions (entity_type, entity_id, created_at desc);
 create index if not exists submissions_status_idx on musicvolume.submissions (status, created_at);
+create index if not exists submissions_new_name_idx on musicvolume.submissions (lower(entity_name)) where kind = 'new';
 create index if not exists submissions_member_idx on musicvolume.submissions (member_id, created_at desc);
 
 -- Every action on a submission, who did it and when: submitted, edited, status changes,

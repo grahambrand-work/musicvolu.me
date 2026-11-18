@@ -61,6 +61,18 @@ Contributors get 10, 25 or 50 edits a month (tier 1, 2, 3); one submission count
 edit however many fields it changes. Editors and admins have no limit. Field rules and the
 change list: `src/lib/edits.ts`. Saving: `src/lib/submissions.ts`, `src/app/edit-actions.ts`.
 
+## Adding new music
+
+**Contribute** (`/contribute`) searches first, so nothing gets added twice, then offers
+"An album, EP or single", "A song" or "An artist" (`/contribute/release|song|artist`).
+The forms show a live preview and need a source. An artist that isn't in the catalog can be
+created from the artist box in a small pop-up: it's saved at once as its own submission, so
+it can be picked straight away, and the release that uses it is linked to it (`depends_on`).
+The pair counts as one edit. New entries show up in search right away, marked "In review",
+and link to their submission page (`/submission/1042`), which also shows the log.
+Code: `src/lib/newEntry.ts`, `src/app/contribute/`, `src/components/NewEntryForm.tsx`,
+`src/components/ArtistPicker.tsx`.
+
 Migration `20261118000200_submissions.sql` adds the two tables and a few catalog fields
 the pages now show (release label, country, language; song language and credits; artist
 born and website). Pages still work before it's applied; those fields just show empty.
