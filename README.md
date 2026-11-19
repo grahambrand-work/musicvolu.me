@@ -121,3 +121,13 @@ For a throwaway local database: create a Postgres 16 database, stub the `auth` a
 Search uses "contains these words" matching. On the full MusicBrainz catalog it needs the
 trigram indexes from Noteworthy's `20261114000300_catalog_search_indexes.sql`; without
 them each search reads every row.
+
+### MusicBrainz changes
+
+The catalog sync (Noteworthy `scripts/musicbrainz/sql/supabase_merge.sql`) reports each changed
+field into `musicvolume.mb_changes` and then calls `select musicvolume.record_mb_changes()`
+(migration `20261119000300_musicbrainz_changes.sql`):
+
+- a change to a field nobody edited on musicvolu.me is applied and logged in `musicvolume.catalog_activity`, by the account **MusicBrainz** (shown in teal, can't sign in);
+- a change to a field edited on musicvolu.me (in the row's `edited_fields`) is not applied: it goes on the review board as a submission by MusicBrainz. Publishing takes MusicBrainz's value, rejecting keeps ours. A value already proposed once isn't proposed again;
+- band members and track lists can't be reviewed yet, so a contradiction there is logged as "kept".

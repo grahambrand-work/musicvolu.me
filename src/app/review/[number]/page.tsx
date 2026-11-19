@@ -339,6 +339,16 @@ function buttonsFor(v: Viewer, s: Submission, last: (Person & { id: string }) | 
   const locked = last && last.id !== v.id && !can.override(v, last)
     ? `${last.username} (${roleLabel(last)}) made the last decision. Only a ${last.role === "admin" ? "admin" : `tier ${last.tier} editor`} or higher can change it.` : undefined;
   const reject: Button = { move: "reject", label: "Reject", style: "danger" };
+  const r = pick(v, s, last, reject, locked);
+  // MusicBrainz can't answer "Ask for changes": reject keeps our value, publish takes theirs.
+  if (r && s.author.role === "system") {
+    r.buttons = r.buttons.filter((b) => b.move !== "ask_changes");
+    if (s.status === "needs_review" || s.status === "in_review") r.note = "From MusicBrainz. Reject keeps the musicvolu.me value; publishing takes MusicBrainz’s";
+  }
+  return r;
+}
+
+function pick(v: Viewer, s: Submission, last: (Person & { id: string }) | null, reject: Button, locked?: string): { buttons: Button[]; note?: string; locked?: string } | null {
   switch (s.status) {
     case "needs_review":
       return { buttons: [reject, { move: "ask_changes", label: "Ask for changes", style: "outline" }, { move: "pick_up", label: "Pick up", style: "primary" }], note: "Picking it up tells other editors you’re on it", locked };

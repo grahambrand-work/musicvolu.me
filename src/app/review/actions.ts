@@ -24,9 +24,11 @@ export async function moveSubmission(number: number, move: Move): Promise<Action
   const m = MOVES[move];
   if (!m || !can.decide(v)) return { error: "Only editors can do that." };
   const sql = db()!;
-  const [s] = await sql<{ id: string; status: Status; member_id: string }[]>`
-    select id, status, member_id from musicvolume.submissions where number = ${number}`;
+  const [s] = await sql<{ id: string; status: Status; member_id: string; by_system: boolean }[]>`
+    select s.id, s.status, s.member_id, m.role = 'system' as by_system
+      from musicvolume.submissions s join musicvolume.members m on m.id = s.member_id where s.number = ${number}`;
   if (!s) return { error: "That submission no longer exists." };
+  if (s.by_system && move === "ask_changes") return { error: "MusicBrainz can't make changes. Reject it to keep the current value, or send it on to publish." };
   if (!m.from.includes(s.status)) return { error: "Someone else moved this one already. Reload to see where it is now." };
   if (s.status === "final_review" && !can.publish(v)) return { error: "Only a tier 3 editor or an admin can change a submission in final review." };
   if (m.publisher && !can.publish(v)) return { error: "Only a tier 3 editor or an admin can do that." };
