@@ -19,5 +19,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Skip images, fonts and other files.
-  matcher: ["/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|mp4|webm)$).*)"],
 };

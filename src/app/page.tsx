@@ -1,6 +1,7 @@
 // Home: the wave picture, the big wordmark, search and "Contribute".
 // Figma: Graham's "Initial Design" homepage, plus "P7 · Home · signed out" for visitors.
 import Link from "next/link";
+import HomeBackdrop from "@/components/HomeBackdrop";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SearchBox from "@/components/SearchBox";
@@ -10,11 +11,7 @@ export default async function HomePage() {
   const viewer = await getViewer();
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden">
-      <div aria-hidden className="absolute inset-0 -z-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/home-wave.jpg" alt="" className="size-full object-cover object-[50%_70%]" />
-        <div className="absolute inset-0 bg-black/80" />
-      </div>
+      <HomeBackdrop className="z-0" />
 
       <Header home />
 
