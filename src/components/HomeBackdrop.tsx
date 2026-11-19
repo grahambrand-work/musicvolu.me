@@ -29,7 +29,7 @@ export default function HomeBackdrop({ className = "-z-10" }: { className?: stri
         <source src="/media/ripples-v1-480-av1.mp4" type='video/mp4; codecs="av01.0.04M.08"' />
         <source src="/media/ripples-v1-480.mp4" type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-black/80" />
+      <div className="absolute inset-0 bg-black/90" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)]" />
       <div className="absolute inset-0 overflow-hidden">
         <div className="grain absolute -inset-[50%]" />
