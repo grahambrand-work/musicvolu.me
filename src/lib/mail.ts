@@ -24,11 +24,15 @@ export async function sendMail(m: Mail) {
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 function html(m: Mail) {
-  return `<!doctype html><html><body style="margin:0;background:#000;padding:40px 16px;font-family:Jost,Helvetica,Arial,sans-serif;color:#fff">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
-<table role="presentation" width="100%" style="max-width:440px" cellspacing="0" cellpadding="0">
-<tr><td style="font-size:28px;font-weight:700;padding-bottom:28px">musicvolu.me</td></tr>
-<tr><td style="font-size:22px;font-weight:600;padding-bottom:10px">${esc(m.heading)}</td></tr>
+  // Black background set on the body AND the tables (Gmail and Outlook drop the body's), and
+  // marked dark-only so mail apps in light mode don't flip it to white.
+  return `<!doctype html><html style="background:#000"><head><meta name="color-scheme" content="dark only"><meta name="supported-color-schemes" content="dark">
+<style>:root{color-scheme:dark only}body,table,td{background:#000!important}</style></head>
+<body bgcolor="#000000" style="margin:0;padding:0;background:#000;font-family:Jost,Helvetica,Arial,sans-serif;color:#fff">
+<table role="presentation" width="100%" bgcolor="#000000" style="background:#000" cellspacing="0" cellpadding="0"><tr><td align="center" bgcolor="#000000" style="background:#000;padding:40px 16px">
+<table role="presentation" width="100%" bgcolor="#000000" style="max-width:440px;background:#000" cellspacing="0" cellpadding="0">
+<tr><td style="font-size:28px;font-weight:700;color:#fff;padding-bottom:28px">musicvolu.me</td></tr>
+<tr><td style="font-size:22px;font-weight:600;color:#fff;padding-bottom:10px">${esc(m.heading)}</td></tr>
 <tr><td style="font-size:15px;line-height:1.5;color:#bdbdbd;padding-bottom:26px">${esc(m.body)}</td></tr>
 <tr><td><a href="${esc(m.link)}" style="display:inline-block;background:#fff;color:#000;text-decoration:none;font-size:15px;font-weight:500;padding:11px 26px;border-radius:99px">${esc(m.button)}</a></td></tr>
 <tr><td style="font-size:12px;line-height:1.5;color:#808080;padding-top:28px">${esc(m.footer)}</td></tr>
