@@ -44,8 +44,14 @@ email, 24 h; reset password, 1 h). Eight wrong passwords in a row lock an accoun
 minutes. Code: `src/lib/auth/`.
 
 Apply a migration as the database owner. The site itself should connect as its own
-login, `musicvolume_app`, which the migration grants: read the catalog, read and write
-`musicvolume`. Supabase's public API roles get no access to the schema.
+login, `musicvolume_app`, which the migration grants: read the catalog tables (not
+Noteworthy's user tables in `public`), read and write `musicvolume`. Supabase's public API
+roles get no access to the schema. A new catalog table the site reads must be added to the
+grant list in the migration.
+
+On the server (applied 2026-11-18): `musicvolume_app` exists with a 20-connection limit; its
+connection string is in `/root/musicvolume/database-url` (root-only), for `DATABASE_URL` in
+Coolify.
 
 ## Run it on your own computer
 
