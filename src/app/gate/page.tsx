@@ -12,7 +12,7 @@ export default async function GatePage({ searchParams }: PageProps<"/gate">) {
   const next = safeNext((await searchParams).next);
   if (!process.env.SITE_ACCESS_PASSWORD) redirect(next);
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center gap-[30px] overflow-hidden px-6 pb-[60px]">
+    <div className="relative isolate flex min-h-dvh flex-col items-center justify-center gap-[30px] overflow-hidden px-6 pb-[60px]">
       <HomeBackdrop />
       <Logo className="absolute top-[30px] left-4 md:left-[60px]" />
       <h1 className="text-[52px] leading-none font-bold md:text-[80px]">musicvolu.me</h1>
