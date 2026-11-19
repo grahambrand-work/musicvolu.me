@@ -5,7 +5,8 @@
 -- catalog tables directly.
 --
 -- Rules it keeps (the same as the MusicBrainz sync, scripts/musicbrainz in Noteworthy):
---   * every field changed by hand goes into the row's edited_fields, so the sync never
+--   * every field changed by hand goes into the row's edited_fields (a MusicBrainz change that is
+--     published takes its fields back out instead), so the sync never
 --     overwrites it;
 --   * new artists, releases and songs get source = 'user', which the sync never touches;
 --   * page addresses (slugs) already in use never change.
@@ -247,8 +248,15 @@ begin
           raise exception using errcode = 'P0001', message = format('This site can''t publish the field "%s" yet.', k);
       end case;
     end loop;
-    execute format('update public.%I set edited_fields = array(select distinct unnest(edited_fields || $2)), updated_at = now() where id = $1', tbl)
-      using eid, edited;
+    if exists (select 1 from musicvolume.members where id = s.member_id and role = 'system') then
+      -- MusicBrainz's own change, accepted: those fields stop being hand-edited, so later
+      -- MusicBrainz changes to them apply without review again.
+      execute format('update public.%I set edited_fields = array(select x from unnest(edited_fields) x where x <> all ($2)), updated_at = now() where id = $1', tbl)
+        using eid, edited;
+    else
+      execute format('update public.%I set edited_fields = array(select distinct unnest(edited_fields || $2)), updated_at = now() where id = $1', tbl)
+        using eid, edited;
+    end if;
 
   else
     -- A new entry.
