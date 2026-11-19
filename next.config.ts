@@ -5,8 +5,6 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/media/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] }];
   },
-  // Coolify builds the site with Nixpacks; "standalone" keeps the image small.
-  output: "standalone",
   turbopack: {
     rules: {
       "*.css": {
