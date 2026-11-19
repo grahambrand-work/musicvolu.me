@@ -1,8 +1,11 @@
 "use server";
 // Submitting suggested edits from an entry page's edit mode.
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { lastDecision, reviseBlock } from "@/lib/review";
 import { countChanges, describeChanges, normalize, validate, type Kind, type Values } from "@/lib/edits";
-import { getEditable, OutOfEdits, saveSubmission } from "@/lib/submissions";
+import { getEditable, getSubmission, OutOfEdits, saveSubmission } from "@/lib/submissions";
 import { getViewer } from "@/lib/viewer";
 
 export type SubmitResult = { error: string; fields?: Record<string, string> } | undefined;
@@ -42,6 +45,68 @@ export async function submitEdit(kind: Kind, slug: string, after: Values, note: 
     return { error: "Couldn't save your edit. Try again in a moment." };
   }
   redirect(`/${kind}/${entry.slug}?submitted=${number}`);
+}
+
+/**
+ * Change what a sent edit suggests (Graham, 2026-11-19: the sender, plus editors). The diff is
+ * rebuilt against the live entry. Logged as "edited" with who did it and which fields moved.
+ * When the sender answers "Ask for changes", it goes back to the reviewer.
+ */
+export async function reviseEdit(number: number, after: Values, note: string): Promise<SubmitResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You've been signed out. Log in again." };
+  const s = await getSubmission(number);
+  if (!s || s.kind !== "edit" || !s.entitySlug) return { error: "That edit no longer exists." };
+  const last = await lastDecision(s.id);
+  const block = reviseBlock(viewer, s, last && last.id !== viewer.id ? last : null);
+  if (block) return { error: block };
+
+  const kind = s.entityType;
+  const entry = await getEditable(kind, s.entitySlug);
+  if (!entry) return { error: "The entry this edit is for no longer exists." };
+  const before = normalize(kind, entry.values);
+  const cleaned = normalize(kind, { ...entry.values, ...pick(after, entry.values) } as Values);
+  const fields = validate(kind, cleaned);
+  if (Object.keys(fields).length) return { error: "Fix the highlighted fields first.", fields };
+  if (!countChanges(describeChanges(kind, before, cleaned))) {
+    return { error: "That leaves nothing to change. Reject it instead if it isn't needed." };
+  }
+  const b = before as Record<string, unknown>, a = cleaned as Record<string, unknown>;
+  const diff: Record<string, { from: unknown; to: unknown }> = {};
+  for (const k of Object.keys(a)) if (JSON.stringify(b[k]) !== JSON.stringify(a[k])) diff[k] = { from: b[k], to: a[k] };
+  const old = s.changes as Record<string, { to?: unknown }>;
+  const moved = [...new Set([...Object.keys(diff), ...Object.keys(old)])]
+    .filter((k) => JSON.stringify(old[k]?.to) !== JSON.stringify(diff[k]?.to));
+
+  const mine = s.author.username === viewer.username;
+  const text = note.trim().slice(0, 4000) || null;
+  const sql = db()!;
+  const ok = await sql.begin(async (tx) => {
+    const [row] = await tx<{ status: string; reviewer_id: string | null }[]>`
+      select status, reviewer_id from musicvolume.submissions where id = ${s.id} for update`;
+    if (!row || row.status !== s.status) return false;
+    // The sender's answer to "Ask for changes" goes back to whoever was reviewing it.
+    const to = mine && row.status === "changes_requested" ? (row.reviewer_id ? "in_review" : "needs_review") : row.status;
+    await tx`update musicvolume.submissions
+                set changes = ${tx.json(diff as never)}, entity_name = ${entry.name}, updated_at = now(),
+                    note = case when ${mine} then ${text} else note end, status = ${to}
+              where id = ${s.id}`;
+    await tx`insert into musicvolume.submission_events (submission_id, member_id, action, detail)
+             values (${s.id}, ${viewer.id}, 'edited', ${tx.json({ fields: moved })})`;
+    if (to !== row.status) {
+      await tx`insert into musicvolume.submission_events (submission_id, member_id, action, from_status, to_status, detail)
+               values (${s.id}, ${viewer.id}, 'status', ${row.status}, ${to}, ${tx.json({ move: "updated" })})`;
+    }
+    // An editor's note goes in the discussion, so the sender's own note stays as they wrote it.
+    if (!mine && text) {
+      await tx`insert into musicvolume.submission_comments (submission_id, member_id, body) values (${s.id}, ${viewer.id}, ${text})`;
+    }
+    return true;
+  });
+  if (!ok) return { error: "Someone else moved this one already. Reload to see where it is now." };
+  revalidatePath("/review", "layout");
+  revalidatePath(`/submission/${number}`);
+  redirect(mine ? `/submission/${number}?updated=1` : `/review/${number}?updated=1`);
 }
 
 /** Only the keys the entry actually has, as strings or the row arrays. Ignores anything extra. */

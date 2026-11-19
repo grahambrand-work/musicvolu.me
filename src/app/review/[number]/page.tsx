@@ -16,7 +16,7 @@ import { Cover, Tag } from "@/components/ui";
 import { describeChanges, FIELDS, parseDuration, type Change, type CreditRow, type Kind, type TrackRow, type Values } from "@/lib/edits";
 import { duration } from "@/lib/format";
 import type { PickedArtist } from "@/lib/newEntry";
-import { ago, can, fieldLabel, getCards, getComments, getCounts, lastDecision, STATUS_LABEL, type Card, type Comment, type Person } from "@/lib/review";
+import { ago, can, fieldLabel, getCards, getComments, getCounts, lastDecision, STATUS_LABEL, type Card, type Comment, type Person, reviseBlock } from "@/lib/review";
 import { roleLabel, tierColor } from "@/lib/roles";
 import { getEditable, getSubmission, type Submission } from "@/lib/submissions";
 import { getViewer, type Viewer } from "@/lib/viewer";
@@ -101,6 +101,9 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
               </p>
             </div>
             <div className="flex gap-2 max-md:w-full">
+              {s.kind === "edit" && !reviseBlock(v, s, last && last.id !== v.id ? last : null) && (
+                <Link href={`/submission/${s.number}/edit`} className="rounded-full border border-teal/70 px-3.5 py-[6px] text-[14px] text-teal hover:bg-teal/10">Change edit</Link>
+              )}
               <Link href={`/review/${s.number}?${new URLSearchParams({ ...(sp.q ? { q: String(sp.q) } : {}) })}`} className={`rounded-full border px-3.5 py-[6px] text-[14px] ${!only ? "border-white bg-white text-black" : "border-white/50"}`}>All fields</Link>
               <Link href={`/review/${s.number}?${new URLSearchParams({ only: "changes", ...(sp.q ? { q: String(sp.q) } : {}) })}`} className={`rounded-full border px-3.5 py-[6px] text-[14px] ${only ? "border-white bg-white text-black" : "border-white/50"}`}>Changes only</Link>
             </div>
@@ -340,6 +343,8 @@ function buttonsFor(v: Viewer, s: Submission, last: (Person & { id: string }) | 
     ? `${last.username} (${roleLabel(last)}) made the last decision. Only a ${last.role === "admin" ? "admin" : `tier ${last.tier} editor`} or higher can change it.` : undefined;
   const reject: Button = { move: "reject", label: "Reject", style: "danger" };
   const r = pick(v, s, last, reject, locked);
+  // Tier 1 editors comment and move things along, but don't reject.
+  if (r && !can.reject(v)) r.buttons = r.buttons.filter((b) => b.move !== "reject");
   // MusicBrainz can't answer "Ask for changes": reject keeps our value, publish takes theirs.
   if (r && s.author.role === "system") {
     r.buttons = r.buttons.filter((b) => b.move !== "ask_changes");

@@ -31,6 +31,7 @@ export async function moveSubmission(number: number, move: Move): Promise<Action
   if (s.by_system && move === "ask_changes") return { error: "MusicBrainz can't make changes. Reject it to keep the current value, or send it on to publish." };
   if (!m.from.includes(s.status)) return { error: "Someone else moved this one already. Reload to see where it is now." };
   if (s.status === "final_review" && !can.publish(v)) return { error: "Only a tier 3 editor or an admin can change a submission in final review." };
+  if (move === "reject" && !can.reject(v)) return { error: "Only a tier 2 or 3 editor or an admin can reject. Ask for changes, or leave a comment." };
   if (m.publisher && !can.publish(v)) return { error: "Only a tier 3 editor or an admin can do that." };
   if (s.member_id === v.id && v.role !== "admin") return { error: "You can't review your own submission. Another editor will pick it up." };
   const last = await lastDecision(s.id);

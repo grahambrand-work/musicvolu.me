@@ -33,12 +33,33 @@ export const can = {
   vote: (v: Who | null) => can.see(v),
   comment: (v: Who | null) => !!v && v.role !== "contributor",
   decide: (v: Who | null) => !!v && v.role !== "contributor",
+  /** Change what a sent edit suggests, and reject: tier 2–3 editors and admins (Graham, 2026-11-19). */
+  revise: (v: Who | null) => !!v && (v.role === "admin" || (v.role === "editor" && v.tier >= 2)),
+  reject: (v: Who | null) => can.revise(v),
   publish: (v: Who | null) => !!v && (v.role === "admin" || (v.role === "editor" && v.tier === 3)),
   /** May v change a decision last made by `by`? Admins always; editors only over the same or a lower tier. */
   override: (v: Who, by: Who | null) => !by || v.role === "admin" || rank(v) >= rank(by),
 };
 
 export type Person = { username: string; role: Viewer["role"]; tier: Viewer["tier"] };
+
+/**
+ * May v change what a sent edit suggests? null = yes, otherwise why not.
+ * The sender: while it waits for review or after changes were asked for.
+ * Editors: until it's published (final review: tier 3 editors and admins), not their own,
+ * and not over a decision made by a higher tier.
+ */
+export function reviseBlock(v: Who & { username: string }, s: { status: string; author: Person }, last: Person | null): string | null {
+  if (s.author.username === v.username) {
+    return ["needs_review", "changes_requested"].includes(s.status) ? null
+      : s.status === "in_review" || s.status === "final_review" ? "An editor is reviewing it, so it can't be changed right now. Leave a comment instead." : "It's closed, so it can't be changed.";
+  }
+  if (!can.revise(v)) return "Only the person who sent it, or a tier 2 or 3 editor, can change it.";
+  if (!["needs_review", "in_review", "changes_requested", "final_review"].includes(s.status)) return "It's closed, so it can't be changed.";
+  if (s.status === "final_review" && !can.publish(v)) return "Only a tier 3 editor or an admin can change it in final review.";
+  if (last && last.username !== v.username && !can.override(v, last)) return `${last.username} (a higher-tier editor) made the last decision here, so only someone of their tier or an admin can change it.`;
+  return null;
+}
 
 export type Card = {
   id: string; number: number; kind: "edit" | "new"; entityType: Kind; entityId: string | null; entityName: string;

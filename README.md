@@ -131,3 +131,13 @@ field into `musicvolume.mb_changes` and then calls `select musicvolume.record_mb
 - a change to a field nobody edited on musicvolu.me is applied and logged in `musicvolume.catalog_activity`, by the account **MusicBrainz** (shown in teal, can't sign in);
 - a change to a field edited on musicvolu.me (in the row's `edited_fields`) is not applied: it goes on the review board as a submission by MusicBrainz. Publishing takes MusicBrainz's value, rejecting keeps ours. A value already proposed once isn't proposed again;
 - band members and track lists can't be reviewed yet, so a contradiction there is logged as "kept".
+
+### Changing a sent edit
+
+`/submission/[number]/edit` reopens the edit form with what the edit suggests. The sender can
+change it while it waits for review or after "Ask for changes" (it then goes back to the
+reviewer). Tier 2–3 editors and admins can change it until it's published (final review: tier 3
+and admins), not over a higher tier's decision. Tier 1 editors comment, ask for changes and send
+to final review, but can't change edits or reject. Every change is logged ("changed the edit").
+A MusicBrainz submission an editor changed stays protected from the sync once published.
+New-entry submissions can't be changed yet.

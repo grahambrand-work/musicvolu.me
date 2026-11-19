@@ -248,9 +248,11 @@ begin
           raise exception using errcode = 'P0001', message = format('This site can''t publish the field "%s" yet.', k);
       end case;
     end loop;
-    if exists (select 1 from musicvolume.members where id = s.member_id and role = 'system') then
-      -- MusicBrainz's own change, accepted: those fields stop being hand-edited, so later
-      -- MusicBrainz changes to them apply without review again.
+    if exists (select 1 from musicvolume.members where id = s.member_id and role = 'system')
+       and not exists (select 1 from musicvolume.submission_events e join musicvolume.members who on who.id = e.member_id
+                        where e.submission_id = s.id and e.action = 'edited' and who.role <> 'system') then
+      -- MusicBrainz's own change, accepted as it came (no editor changed it): those fields stop
+      -- being hand-edited, so later MusicBrainz changes to them apply without review again.
       execute format('update public.%I set edited_fields = array(select x from unnest(edited_fields) x where x <> all ($2)), updated_at = now() where id = $1', tbl)
         using eid, edited;
     else
