@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import { getViewer } from "@/lib/viewer";
 import { Dot, EntryPage, ReleaseList } from "@/components/Entry";
 import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
 import { getSong } from "@/lib/catalog";
@@ -19,6 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/song/[slug]">): P
 export default async function SongPage({ params, searchParams }: PageProps<"/song/[slug]">) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const q = typeof sp.q === "string" ? sp.q : undefined;
+  const viewer = await getViewer();
   const s = await getSong(slug);
   if (s === null) notFound();
   const main = s?.artists.filter((a) => a.role === "main") ?? [];
@@ -27,7 +29,7 @@ export default async function SongPage({ params, searchParams }: PageProps<"/son
     <>
       <Header q={q} />
       {!s ? <NoDatabase /> : (
-        <EntryPage kind="song" slug={slug} q={q} cover={s.cover} tag="Song" title={s.title}
+        <EntryPage signedIn={!!viewer} kind="song" slug={slug} q={q} cover={s.cover} tag="Song" title={s.title}
           source={s.source} history={s.history} pending={s.pending}
           sub={<>
             <span className="font-mono">{main.map((a, i) => <span key={a.slug}>{i > 0 && ", "}<Link href={`/artist/${a.slug}`} className="hover:underline">{a.name}</Link></span>)}</span>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import { getViewer } from "@/lib/viewer";
 import { Dot, EntryPage, ReleaseList } from "@/components/Entry";
 import { PlusIcon } from "@/components/icons";
 import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
@@ -17,13 +18,14 @@ export async function generateMetadata({ params }: PageProps<"/artist/[slug]">):
 export default async function ArtistPage({ params, searchParams }: PageProps<"/artist/[slug]">) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const q = typeof sp.q === "string" ? sp.q : undefined;
+  const viewer = await getViewer();
   const a = await getArtist(slug);
   if (a === null) notFound();
   return (
     <>
       <Header q={q} />
       {!a ? <NoDatabase /> : (
-        <EntryPage kind="artist" slug={slug} q={q} cover={a.image} round tag="Artist" title={a.name}
+        <EntryPage signedIn={!!viewer} kind="artist" slug={slug} q={q} cover={a.image} round tag="Artist" title={a.name}
           source={a.source} history={a.history} pending={a.pending}
           sub={<>
             {a.origin && <><span className="font-mono">{a.origin}</span><Dot /></>}

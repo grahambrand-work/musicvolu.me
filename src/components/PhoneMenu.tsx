@@ -2,6 +2,7 @@
 // The ☰ menu on phones.
 import Link from "next/link";
 import { useState } from "react";
+import { logout } from "@/lib/auth/actions";
 import { MenuIcon } from "./icons";
 
 export default function PhoneMenu({ signedIn }: { signedIn: boolean }) {
@@ -18,6 +19,11 @@ export default function PhoneMenu({ signedIn }: { signedIn: boolean }) {
             {links.map(([label, href]) => (
               <Link key={href} href={href} onClick={() => setOpen(false)} className="block border-b border-white/8 px-4 py-3 text-[15px] last:border-0 hover:bg-white/5">{label}</Link>
             ))}
+            {signedIn && (
+              <form action={logout}>
+                <button type="submit" className="block w-full px-4 py-3 text-left text-[15px] hover:bg-white/5">Log out</button>
+              </form>
+            )}
           </nav>
         </div>
       )}

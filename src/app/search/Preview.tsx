@@ -1,8 +1,10 @@
 // The entry preview beside the results (desktop) or in the phone sheet: key facts, the
 // tracklist or discography, and a line about its edit history.
 import Link from "next/link";
-import { ArrowIcon, ClockIcon } from "@/components/icons";
-import { Cover, FieldRows, SectionLabel, SuggestEditLink, Tag } from "@/components/ui";
+import { Cover, FieldRows, SectionLabel, Tag } from "@/components/ui";
+import SuggestEdit from "@/components/SuggestEdit";
+import { ArrowIcon, ClockIcon, PencilIcon } from "@/components/icons";
+import { getViewer } from "@/lib/viewer";
 import { getArtist, getRelease, getSong, type Kind, type Source } from "@/lib/catalog";
 import { duration, genreList, longDate, trackNo } from "@/lib/format";
 import { suggestHref } from "@/lib/links";
@@ -11,12 +13,13 @@ const SHOW_ROWS = 5; // phone shows the first few tracks, then "Show all"
 
 export default async function Preview({ kind, slug, q, compact = false }: { kind: Kind; slug: string; q: string; compact?: boolean }) {
   const page = `/${kind}/${slug}${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const signedIn = !!(await getViewer());
   if (kind === "release") {
     const r = await getRelease(slug);
     if (!r) return null;
     const tracks = compact ? r.tracks.slice(0, SHOW_ROWS) : r.tracks;
     return (
-      <Shell cover={r.coverSmall ?? r.cover} tag={r.type} title={r.title} sub={[r.artists.map((a) => a.name).join(", "), r.year ? String(r.year) : ""]} page={page} kind={kind} slug={slug} compact={compact}>
+      <Shell cover={r.coverSmall ?? r.cover} tag={r.type} title={r.title} sub={[r.artists.map((a) => a.name).join(", "), r.year ? String(r.year) : ""]} page={page} kind={kind} slug={slug} compact={compact} signedIn={signedIn}>
         <FieldRows size="sm" labelWidth={compact ? 126 : 126} rows={[
           { label: "Artist", value: r.artists.map((a) => a.name).join(", ") },
           { label: "Type", value: r.type },
@@ -25,7 +28,7 @@ export default async function Preview({ kind, slug, q, compact = false }: { kind
           { label: "Source", value: r.source.from === "user" ? "Members" : "MusicBrainz" },
         ]} />
         <div>
-          <SectionLabel right={<Link href={suggestHref(kind, slug, "tracks")} className="text-[13px] text-white/80 hover:text-white">Suggest a tracklist fix</Link>}>
+          <SectionLabel right={<SuggestEdit href={suggestHref(kind, slug, "tracks")} signedIn={signedIn} className="text-[13px] text-white/80 hover:text-white">Suggest a tracklist fix</SuggestEdit>}>
             Tracklist · {r.tracks.length}
           </SectionLabel>
           {tracks.map((t, i) => (
@@ -46,7 +49,7 @@ export default async function Preview({ kind, slug, q, compact = false }: { kind
     if (!a) return null;
     const list = compact ? a.releases.slice(0, SHOW_ROWS) : a.releases.slice(0, 12);
     return (
-      <Shell cover={a.image} round tag="Artist" title={a.name} sub={[a.origin ?? "", a.years ?? ""]} page={page} kind={kind} slug={slug} compact={compact}>
+      <Shell cover={a.image} round tag="Artist" title={a.name} sub={[a.origin ?? "", a.years ?? ""]} page={page} kind={kind} slug={slug} compact={compact} signedIn={signedIn}>
         <FieldRows size="sm" labelWidth={126} rows={[
           { label: "Type", value: a.kind === "Band" ? "Group" : "Person" },
           { label: "From", value: a.origin ?? "" },
@@ -73,7 +76,7 @@ export default async function Preview({ kind, slug, q, compact = false }: { kind
   if (!s) return null;
   const main = s.artists.filter((x) => x.role === "main").map((x) => x.name).join(", ");
   return (
-    <Shell cover={s.cover} tag="Song" title={s.title} sub={[main, duration(s.duration)]} page={page} kind={kind} slug={slug} compact={compact}>
+    <Shell cover={s.cover} tag="Song" title={s.title} sub={[main, duration(s.duration)]} page={page} kind={kind} slug={slug} compact={compact} signedIn={signedIn}>
       <FieldRows size="sm" labelWidth={126} rows={[
         { label: "Artist", value: main },
         { label: "Length", value: duration(s.duration) },
@@ -96,8 +99,8 @@ export default async function Preview({ kind, slug, q, compact = false }: { kind
   );
 }
 
-function Shell({ cover, round, tag, title, sub, page, kind, slug, compact, children }: {
-  cover: string | null; round?: boolean; tag: string; title: string; sub: string[]; page: string; kind: Kind; slug: string; compact: boolean; children: React.ReactNode;
+function Shell({ cover, round, tag, title, sub, page, kind, slug, compact, signedIn, children }: {
+  signedIn: boolean; cover: string | null; round?: boolean; tag: string; title: string; sub: string[]; page: string; kind: Kind; slug: string; compact: boolean; children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -113,7 +116,10 @@ function Shell({ cover, round, tag, title, sub, page, kind, slug, compact, child
         <Link href={page} className="inline-flex items-center gap-1.5 rounded-full bg-white py-[7px] pr-3.5 pl-4 text-[14px] font-medium text-black hover:bg-white/85">
           Open full page <ArrowIcon />
         </Link>
-        <SuggestEditLink href={suggestHref(kind, slug)} />
+        <SuggestEdit href={suggestHref(kind, slug)} signedIn={signedIn}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/35 py-[5px] pr-3 pl-2.5 text-[13px] text-white transition-colors hover:border-white hover:bg-white/5">
+          <PencilIcon /> Suggest edit
+        </SuggestEdit>
       </div>
       {children}
     </div>

@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
-import ComingSoon from "@/components/ComingSoon";
+import { redirect } from "next/navigation";
+import AuthShell from "@/components/AuthShell";
+import { safeNext } from "@/lib/gate";
+import { getViewer } from "@/lib/viewer";
+import LoginForm from "./LoginForm";
 
 export const metadata: Metadata = { title: "Log in" };
 
-export default function LoginPage() {
-  return <ComingSoon title="Log in">Accounts are coming in the next update. Until then you can search and browse everything.</ComingSoon>;
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const next = safeNext((await searchParams).next);
+  if (await getViewer()) redirect(next);
+  return (
+    <AuthShell title="Log in">
+      <LoginForm next={next} />
+    </AuthShell>
+  );
 }
