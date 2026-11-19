@@ -10,7 +10,7 @@ export const SESSION_COOKIE = "mv_session";
 const DAYS = 60;
 
 export type Member = {
-  id: string; username: string; email: string; role: "contributor" | "editor" | "admin"; tier: 1 | 2 | 3;
+  id: string; username: string; email: string; role: "contributor" | "editor" | "admin" | "system"; tier: 1 | 2 | 3;
   emailVerified: boolean;
 };
 
@@ -45,7 +45,7 @@ export const currentMember = cache(async (): Promise<Member | null> => {
       select m.id, m.username, m.email, m.role, m.tier, m.email_verified_at,
              s.expires_at < now() + make_interval(days => ${DAYS - 1}) as renew
         from musicvolume.sessions s join musicvolume.members m on m.id = s.member_id
-       where s.id = ${tokenId(token)} and s.expires_at > now()`;
+       where s.id = ${tokenId(token)} and s.expires_at > now() and m.role <> 'system'`;
     if (!row) return null;
     if (row.renew) await sql`update musicvolume.sessions set expires_at = now() + ${`${DAYS} days`}::interval where id = ${tokenId(token)}`;
     return { id: row.id, username: row.username, email: row.email, role: row.role, tier: row.tier as 1 | 2 | 3, emailVerified: !!row.email_verified_at };

@@ -34,6 +34,26 @@ and admins publish it into the catalog. Designs live in the Figma file "Musicvol
 
 Contribute is still a placeholder.
 
+## Review board
+
+`/review` shows open submissions in five stages (Needs review, In review, Changes
+requested, Final review, Live today); `/review/<number>` opens one with live vs suggested
+side by side, comments per field and on the whole submission (with @-tags), likes, and
+the status buttons. Who can do what follows Figma "P6 · What each tier can do"
+(`can` in `src/lib/review.ts`): tier 2-3 contributors see the board and like/dislike;
+editors comment and move cards, but can't change a decision made by a higher tier;
+tier 3 editors and admins act in final review. Editors can't review their own
+submissions (admins can). Comments and likes: migration `20261119000100_review.sql`.
+
+Publishing (`20261119000200_publish.sql`): the site's login can't write the catalog
+tables; it can only call `musicvolume.publish(number, member)`, which runs as the
+database owner, checks the submission is in final review and the member is a tier 3
+editor or admin, then writes the change. Every field changed by hand goes into the row's
+`edited_fields` (the MusicBrainz sync never overwrites those) and new artists, releases
+and songs get `source = 'user'` (the sync never touches those). A changed track title
+renames that song everywhere; typed artist names must match exactly one catalog artist.
+Apply it as the owner of the catalog tables.
+
 ## Accounts
 
 Musicvolu.me has its own members, separate from Noteworthy's logins: email and password
@@ -101,3 +121,23 @@ For a throwaway local database: create a Postgres 16 database, stub the `auth` a
 Search uses "contains these words" matching. On the full MusicBrainz catalog it needs the
 trigram indexes from Noteworthy's `20261114000300_catalog_search_indexes.sql`; without
 them each search reads every row.
+
+### MusicBrainz changes
+
+The catalog sync (Noteworthy `scripts/musicbrainz/sql/supabase_merge.sql`) reports each changed
+field into `musicvolume.mb_changes` and then calls `select musicvolume.record_mb_changes()`
+(migration `20261119000300_musicbrainz_changes.sql`):
+
+- a change to a field nobody edited on musicvolu.me is applied and logged in `musicvolume.catalog_activity`, by the account **MusicBrainz** (shown in teal, can't sign in);
+- a change to a field edited on musicvolu.me (in the row's `edited_fields`) is not applied: it goes on the review board as a submission by MusicBrainz. Publishing takes MusicBrainz's value, rejecting keeps ours. A value already proposed once isn't proposed again;
+- band members and track lists can't be reviewed yet, so a contradiction there is logged as "kept".
+
+### Changing a sent edit
+
+`/submission/[number]/edit` reopens the edit form with what the edit suggests. The sender can
+change it while it waits for review or after "Ask for changes" (it then goes back to the
+reviewer). Tier 2–3 editors and admins can change it until it's published (final review: tier 3
+and admins), not over a higher tier's decision. Tier 1 editors comment, ask for changes and send
+to final review, but can't change edits or reject. Every change is logged ("changed the edit").
+A MusicBrainz submission an editor changed stays protected from the sync once published.
+New-entry submissions can't be changed yet.

@@ -1,11 +1,15 @@
 // Role names, colours and limits (Figma "P6 · Tier colors and permissions").
-type R = { role: "contributor" | "editor" | "admin"; tier: number };
+type R = { role: "contributor" | "editor" | "admin" | "system"; tier: number };
 
 /** "Tier 1 Contributor", "Tier 2 Editor", "Admin". */
 export function roleLabel(v: R) {
   if (v.role === "admin") return "Admin";
+  if (v.role === "system") return "Catalog sync";
   return `Tier ${v.tier} ${v.role === "editor" ? "Editor" : "Contributor"}`;
 }
+
+/** The "MusicBrainz" account: changes from the catalog sync. */
+export const MUSICBRAINZ_TEAL = "#2ec4b6";
 
 const COLORS = {
   contributor: ["#ffffff", "#5999fa", "#7ad98f"],
@@ -15,6 +19,7 @@ const COLORS = {
 /** Badge background and username colour. */
 export function tierColor(v: R) {
   if (v.role === "admin") return "#f26694";
+  if (v.role === "system") return MUSICBRAINZ_TEAL;   // the MusicBrainz account
   return COLORS[v.role][Math.min(Math.max(v.tier, 1), 3) - 1];
 }
 
