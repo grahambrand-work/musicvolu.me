@@ -178,7 +178,7 @@ export function validate(kind: Kind, v: Values): Record<string, string> {
     const val = r[f.key] as string | undefined;
     if (f.type === "readonly" || val === undefined) continue;
     if (f.max && val.length > f.max) err[f.key] = `Keep this under ${f.max} characters.`;
-    if (f.type === "date" && val && !/^\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$/.test(val)) err[f.key] = "Use YYYY, YYYY-MM or YYYY-MM-DD.";
+    if (f.type === "date" && val && !isPartialDate(val)) err[f.key] = "Use YYYY, YYYY-MM or YYYY-MM-DD.";
     if (f.type === "duration" && val && !isDuration(val)) err[f.key] = "Use minutes:seconds, like 3:54.";
     if (f.type === "select" && !f.options!.some((o) => o.value === val)) err[f.key] = "Pick one from the list.";
     if (f.type === "list" && splitList(val).some((x) => x.length > 200)) err[f.key] = "One of these is too long.";
@@ -207,7 +207,7 @@ export function validate(kind: Kind, v: Values): Record<string, string> {
   return err;
 }
 
-const isDuration = (s: string) => /^(\d{1,2}:)?\d{1,3}:[0-5]\d$/.test(s);
+export const isDuration = (s: string) => /^(\d{1,2}:)?\d{1,3}:[0-5]\d$/.test(s);
 
 /** "3:54" → 234. "1:02:03" → 3723. */
 export function parseDuration(s: string): number | null {
@@ -220,3 +220,6 @@ export const SUGGEST: Record<"country" | "language", string[]> = {
   country: ["Argentina", "Australia", "Austria", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia", "Czechia", "Denmark", "Finland", "France", "Germany", "Ghana", "Greece", "Hong Kong", "Iceland", "India", "Indonesia", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Mexico", "Netherlands", "New Zealand", "Nigeria", "Norway", "Philippines", "Poland", "Portugal", "Puerto Rico", "Russia", "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", "Taiwan", "Thailand", "Turkey", "Ukraine", "United Kingdom", "United States", "Worldwide"],
   language: ["Arabic", "Chinese", "Danish", "Dutch", "English", "Finnish", "French", "German", "Greek", "Hebrew", "Hindi", "Icelandic", "Indonesian", "Instrumental", "Italian", "Japanese", "Korean", "Norwegian", "Polish", "Portuguese", "Russian", "Spanish", "Swedish", "Tagalog", "Thai", "Turkish", "Ukrainian", "Yoruba", "Multiple languages"],
 };
+
+/** 2017, 2017-06 or 2017-06-16. */
+export const isPartialDate = (s: string) => /^\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$/.test(s);

@@ -19,7 +19,10 @@ export type Hit = {
   score: number;
   /** Tie-breaker: bigger first (releases for artists, track count for releases, appearances for songs). */
   weight: number;
+  /** A new entry someone has submitted that isn't published yet: its submission number. */
+  review?: number;
 };
+
 
 export type SearchFilter = "all" | "artists" | "releases" | "songs";
 
@@ -120,11 +123,21 @@ export async function searchCatalog(raw: string, filter: SearchFilter = "all", l
      where ${where}
      limit ${n}`;
 
-  const [relByTitle, relByArtist, songByTitle, songByArtist, ...comboRows] = await Promise.all([
+  // New entries waiting for review show up straight away, marked "in review".
+  type PendingRow = { number: string; entity_type: Kind; entity_name: string; artist: string | null; rtype: string | null };
+  const pending = sql<PendingRow[]>`
+    select number, entity_type, entity_name, changes->'artists'->'to'->0->>'name' as artist, changes->'type'->>'to' as rtype
+      from musicvolume.submissions
+     where kind = 'new' and status in ('needs_review', 'in_review', 'changes_requested', 'final_review')
+       and entity_name ilike ${like}
+     order by created_at desc limit 20`.catch(() => [] as PendingRow[]);
+
+  const [relByTitle, relByArtist, songByTitle, songByArtist, pendingRows, ...comboRows] = await Promise.all([
     want("releases") ? releaseSelect(sql`r.title ilike ${like}`, 60) : Promise.resolve([] as ReleaseRow[]),
     want("releases") && top.length ? releaseSelect(sql`r.artist_id in ${sql(top)}`, 60) : Promise.resolve([] as ReleaseRow[]),
     want("songs") ? songSelect(sql`s.title ilike ${like}`, 60) : Promise.resolve([] as SongRow[]),
     want("songs") && top.length ? songSelect(sql`s.artist_id in ${sql(top)} and s.kind = 'original'`, 200) : Promise.resolve([] as SongRow[]),
+    pending,
     ...combos.filter((c) => c.ids.length).flatMap((c) => [
       want("releases") ? releaseSelect(sql`r.artist_id in ${sql(c.ids)} and r.title ilike ${`%${c.title}%`}`, 20) : Promise.resolve([] as ReleaseRow[]),
       want("songs") ? songSelect(sql`s.artist_id in ${sql(c.ids)} and s.title ilike ${`%${c.title}%`}`, 20) : Promise.resolve([] as SongRow[]),
@@ -139,8 +152,17 @@ export async function searchCatalog(raw: string, filter: SearchFilter = "all", l
       : songCols(rows as SongRow[], (s) => rank(s.title, t));
   });
 
+  const filterOf: Record<Kind, SearchFilter> = { artist: "artists", release: "releases", song: "songs" };
+  const pendingHits: Hit[] = pendingRows.filter((p) => want(filterOf[p.entity_type])).map((p) => ({
+    kind: p.entity_type, slug: `review-${p.number}`, title: p.entity_name, cover: null, review: Number(p.number),
+    tag: p.entity_type === "artist" ? "ARTIST" : p.entity_type === "song" ? "SONG" : (p.rtype ?? "Album").toUpperCase(),
+    sub: ["In review", p.artist].filter(Boolean) as string[],
+    score: rank(p.entity_name, q) + 0.1, weight: 0,
+  }));
+
   const all = [
     ...(want("artists") ? artistHits : []),
+    ...pendingHits,
     ...releaseCols(relByTitle, (r) => rank(r.title, q)),
     ...releaseCols(relByArtist, (r) => Math.min(rank(r.title, q), 2)),
     ...songCols(songByTitle, (s) => rank(s.title, q)),

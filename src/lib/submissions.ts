@@ -64,8 +64,11 @@ export type Allowance = { limit: number | null; used: number; left: number | nul
 export async function allowanceFor(v: Viewer, sql = db()!): Promise<Allowance> {
   const limit = monthlyAllowance(v);
   const [{ n }] = await sql<{ n: number }[]>`
-    select count(*)::int as n from musicvolume.submissions
-     where member_id = ${v.id} and status <> 'withdrawn' and created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'`;
+    select count(*)::int as n from musicvolume.submissions s
+     where s.member_id = ${v.id} and s.status <> 'withdrawn'
+       and s.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
+       -- An artist added from an album or song form goes in with it as one edit.
+       and not exists (select 1 from musicvolume.submissions d where d.depends_on = s.id and d.member_id = s.member_id)`;
   return { limit, used: n, left: limit == null ? null : Math.max(limit - n, 0) };
 }
 
@@ -74,6 +77,9 @@ export class OutOfEdits extends Error {}
 /** Saves one submission and its "submitted" log entry. Returns its number (#1042). */
 export async function saveSubmission(viewer: Viewer, input: { kind: "edit" | "new"; entityType: Kind; entityId: string | null; entityName: string;
   changes: Record<string, { from?: unknown; to: unknown }>; note: string | null;
+  sources?: string | null;
+  /** A new artist (still in review) this new release or song is by: that artist's submission number. */
+  dependsOn?: number | null;
 }): Promise<number> {
   const sql = db()!;
   return sql.begin(async (tx) => {
@@ -81,13 +87,82 @@ export async function saveSubmission(viewer: Viewer, input: { kind: "edit" | "ne
     await tx`select 1 from musicvolume.members where id = ${viewer.id} for update`;
     const { left } = await allowanceFor(viewer, tx as unknown as typeof sql);
     if (left === 0) throw new OutOfEdits();
+    let dependsOn: string | null = null;
+    if (input.dependsOn) {
+      const [d] = await tx<{ id: string }[]>`
+        select id from musicvolume.submissions where number = ${input.dependsOn} and kind = 'new' and entity_type = 'artist'
+           and status not in ('rejected', 'withdrawn')`;
+      dependsOn = d?.id ?? null;
+    }
     const [row] = await tx<{ id: string; number: string }[]>`
-      insert into musicvolume.submissions (member_id, kind, entity_type, entity_id, entity_name, changes, note)
+      insert into musicvolume.submissions (member_id, kind, entity_type, entity_id, entity_name, changes, note, sources, depends_on)
       values (${viewer.id}, ${input.kind}, ${input.entityType}, ${input.entityId}, ${input.entityName},
-              ${tx.json(input.changes as never)}, ${input.note})
+              ${tx.json(input.changes as never)}, ${input.note}, ${input.sources ?? null}, ${dependsOn})
       returning id, number`;
     await tx`insert into musicvolume.submission_events (submission_id, member_id, action, to_status)
              values (${row.id}, ${viewer.id}, 'submitted', 'needs_review')`;
     return Number(row.number);
   });
+}
+
+export type Submission = {
+  id: string; number: number; kind: "edit" | "new"; entityType: Kind; entityId: string | null; entityName: string;
+  changes: Record<string, { from?: unknown; to: unknown }>; note: string | null; sources: string | null;
+  status: string; createdAt: Date; author: { username: string; role: Viewer["role"]; tier: Viewer["tier"] };
+  entitySlug: string | null;
+  dependsOn: { number: number; name: string; status: string } | null;
+  events: { action: string; toStatus: string | null; when: Date; who: string | null }[];
+};
+
+const SLUG_TABLE: Record<Kind, string> = { artist: "artists", release: "releases", song: "songs" };
+
+export async function getSubmission(number: number): Promise<Submission | null> {
+  const sql = db();
+  if (!sql || !Number.isSafeInteger(number)) return null;
+  const [s] = await sql<{ id: string; number: string; kind: "edit" | "new"; entity_type: Kind; entity_id: string | null; entity_name: string; changes: Submission["changes"]; note: string | null; sources: string | null; status: string; created_at: Date; username: string; role: Viewer["role"]; tier: Viewer["tier"]; dep_number: string | null; dep_name: string | null; dep_status: string | null }[]>`
+    select s.id, s.number, s.kind, s.entity_type, s.entity_id, s.entity_name, s.changes, s.note, s.sources, s.status, s.created_at,
+           m.username, m.role, m.tier, d.number as dep_number, d.entity_name as dep_name, d.status as dep_status
+      from musicvolume.submissions s
+      join musicvolume.members m on m.id = s.member_id
+      left join musicvolume.submissions d on d.id = s.depends_on
+     where s.number = ${number}`.catch(() => []);
+  if (!s) return null;
+  const [events, slug] = await Promise.all([
+    sql<{ action: string; to_status: string | null; created_at: Date; username: string | null }[]>`
+      select e.action, e.to_status, e.created_at, m.username from musicvolume.submission_events e
+        left join musicvolume.members m on m.id = e.member_id
+       where e.submission_id = ${s.id} order by e.created_at`,
+    s.entity_id ? sql<{ slug: string }[]>`select slug from ${sql("public." + SLUG_TABLE[s.entity_type])} where id = ${s.entity_id}` : Promise.resolve([]),
+  ]);
+  return {
+    id: s.id, number: Number(s.number), kind: s.kind, entityType: s.entity_type, entityId: s.entity_id, entityName: s.entity_name,
+    changes: s.changes, note: s.note, sources: s.sources, status: s.status, createdAt: s.created_at,
+    author: { username: s.username, role: s.role, tier: s.tier },
+    entitySlug: slug[0]?.slug ?? null,
+    dependsOn: s.dep_number ? { number: Number(s.dep_number), name: s.dep_name!, status: s.dep_status! } : null,
+    events: events.map((e) => ({ action: e.action, toStatus: e.to_status, when: e.created_at, who: e.username })),
+  };
+}
+
+export type ArtistChoice = { id?: string; review?: number; name: string; detail: string; image: string | null };
+
+/** Artists to pick from on the new-entry forms: catalog artists, then new ones still in review. */
+export async function findArtists(q: string): Promise<ArtistChoice[]> {
+  const sql = db();
+  const t = q.trim().replace(/[%_\\]/g, " ");
+  if (!sql || t.length < 1) return [];
+  const [found, pending] = await Promise.all([
+    sql<{ id: string; name: string; origin: string | null; disambiguation: string | null; image_url: string | null }[]>`
+      select id, name, origin, disambiguation, image_url from public.artists
+       where name ilike ${`%${t}%`}
+       order by lower(name) = lower(${t}) desc, lower(name) like lower(${`${t}%`}) desc, length(name) limit 8`,
+    sql<{ number: string; entity_name: string; origin: string | null }[]>`
+      select number, entity_name, changes->'origin'->>'to' as origin from musicvolume.submissions
+       where kind = 'new' and entity_type = 'artist' and status in ('needs_review', 'in_review', 'changes_requested', 'final_review')
+         and entity_name ilike ${`%${t}%`} order by created_at desc limit 5`.catch(() => []),
+  ]);
+  return [
+    ...found.map((a) => ({ id: a.id, name: a.name, detail: [a.disambiguation, a.origin].filter(Boolean).join(" · "), image: a.image_url })),
+    ...pending.map((p) => ({ review: Number(p.number), name: p.entity_name, detail: p.origin ?? "", image: null })),
+  ];
 }
