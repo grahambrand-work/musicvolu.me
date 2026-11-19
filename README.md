@@ -34,6 +34,18 @@ and admins publish it into the catalog. Designs live in the Figma file "Musicvol
 
 Contribute is still a placeholder.
 
+## Review board
+
+`/review` shows open submissions in five stages (Needs review, In review, Changes
+requested, Final review, Live today); `/review/<number>` opens one with live vs suggested
+side by side, comments per field and on the whole submission (with @-tags), likes, and
+the status buttons. Who can do what follows Figma "P6 · What each tier can do"
+(`can` in `src/lib/review.ts`): tier 2-3 contributors see the board and like/dislike;
+editors comment and move cards, but can't change a decision made by a higher tier;
+tier 3 editors and admins act in final review. Editors can't review their own
+submissions (admins can). Comments and likes: migration `20261119000100_review.sql`.
+Publishing into the catalog is not built yet.
+
 ## Accounts
 
 Musicvolu.me has its own members, separate from Noteworthy's logins: email and password

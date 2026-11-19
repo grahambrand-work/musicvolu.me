@@ -5,10 +5,10 @@ import { useState } from "react";
 import { logout } from "@/lib/auth/actions";
 import { MenuIcon } from "./icons";
 
-export default function PhoneMenu({ signedIn }: { signedIn: boolean }) {
+export default function PhoneMenu({ signedIn, review = false }: { signedIn: boolean; review?: boolean }) {
   const [open, setOpen] = useState(false);
   const links = signedIn
-    ? [["Contribute", "/contribute"], ["About", "/about"], ["Help", "/help"]]
+    ? [...(review ? [["Review board", "/review"]] : []), ["Contribute", "/contribute"], ["About", "/about"], ["Help", "/help"]]
     : [["Log in", "/login"], ["Create account", "/signup"], ["About", "/about"], ["Help", "/help"]];
   return (
     <>
