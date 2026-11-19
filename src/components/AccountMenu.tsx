@@ -14,7 +14,7 @@ export default function AccountMenu({ username, badge, color }: { username: stri
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-5">
-        <span className="font-mono text-[16px]" style={{ color: color === "#ffffff" ? undefined : color }}>{username}</span>
+        <span className="font-mono text-[16px] text-white">{username}</span>
         <span className="rounded-full px-4 py-0.5 text-[14px] text-black" style={{ background: color }}>{badge}</span>
       </button>
       {open && (
