@@ -1,5 +1,5 @@
 // Reading the music catalog (artists, releases, songs) from the Noteworthy database.
-// Everything here is read-only; suggesting and publishing edits comes in a later step.
+// Everything here is read-only; suggested edits live in musicvolume.submissions (lib/submissions.ts).
 import "server-only";
 import { cache } from "react";
 import { db } from "./db";
@@ -185,6 +185,7 @@ export type Artist = {
   legalName: string | null; aliases: string[]; genres: string[];
   members: { name: string; role: string | null; slug: string | null }[];
   releases: { slug: string; title: string; type: string; year: number | null; tracks: number; cover: string | null }[];
+  born: string | null; website: string | null;
   source: Source; history: HistoryItem[]; pending: number;
 };
 
@@ -193,7 +194,8 @@ export type Release = {
   cover: string | null; coverSmall: string | null;
   artists: { name: string; slug: string }[];
   genres: string[]; editions: number;
-  tracks: { disc: number; no: number | null; title: string; slug: string; duration: number | null }[];
+  tracks: { id: string; disc: number; no: number | null; title: string; slug: string; duration: number | null }[];
+  label: string | null; country: string | null; language: string | null;
   source: Source; history: HistoryItem[]; pending: number;
 };
 
@@ -203,26 +205,40 @@ export type Song = {
   original: { title: string; slug: string } | null;
   firstReleased: number | null; genres: string[];
   appearsOn: { slug: string; title: string; type: string; year: number | null; trackNo: number | null; cover: string | null }[];
+  language: string | null; credits: { role: string; name: string }[];
   source: Source; history: HistoryItem[]; pending: number;
 };
 
-/** Approved edits on an entry, newest first (the full log arrives with accounts). */
-async function historyFor(entity: string, id: string): Promise<{ history: HistoryItem[]; pending: number }> {
+/** Published edits on an entry (newest first) and how many are still waiting for review. */
+async function historyFor(entity: Kind, id: string): Promise<{ history: HistoryItem[]; pending: number }> {
   const sql = db()!;
   try {
-    const rows = await sql<{ status: string; created_at: Date; reviewed_at: Date | null; note: string | null; action: string }[]>`
-      select status, created_at, reviewed_at, note, action from public.catalog_edits
-       where entity_type = ${entity} and entity_id = ${id}
-       order by created_at desc limit 3`;
+    const [rows, open] = await Promise.all([
+      sql<{ username: string; published_at: Date; number: string; changes: Record<string, unknown>; kind: string }[]>`
+        select m.username, s.published_at, s.number, s.changes, s.kind
+          from musicvolume.submissions s join musicvolume.members m on m.id = s.member_id
+         where s.entity_type = ${entity} and s.entity_id = ${id} and s.status = 'published'
+         order by s.published_at desc limit 5`,
+      sql<{ n: number }[]>`
+        select count(*)::int as n from musicvolume.submissions
+         where entity_type = ${entity} and entity_id = ${id} and status in ('needs_review', 'in_review', 'changes_requested', 'final_review')`,
+    ]);
     return {
-      history: rows.filter((r) => r.status === "approved").map((r) => ({
-        who: "", when: r.reviewed_at ?? r.created_at, status: "Approved", text: r.note ?? `${r.action}d`,
+      history: rows.map((r) => ({
+        who: r.username, when: r.published_at, status: `#${r.number}`,
+        text: r.kind === "new" ? "added this" : `changed ${Object.keys(r.changes).length} field${Object.keys(r.changes).length === 1 ? "" : "s"}`,
       })),
-      pending: rows.filter((r) => r.status === "pending").length,
+      pending: open[0]?.n ?? 0,
     };
   } catch {
+    // The submissions tables aren't on this database yet.
     return { history: [], pending: 0 };
   }
+}
+
+/** Columns added by migration 20261118000200. Empty until it's applied. */
+async function extras<T extends object>(q: () => Promise<T[]>, empty: T): Promise<T> {
+  try { return (await q())[0] ?? empty; } catch { return empty; }
 }
 
 export const getArtist = cache(async (slug: string): Promise<Artist | null | undefined> => {
@@ -247,13 +263,14 @@ export const getArtist = cache(async (slug: string): Promise<Artist | null | und
        order by r.year desc nulls last, r.title`,
     historyFor("artist", a.id),
   ]);
+  const more = await extras(() => sql<{ born: string | null; website: string | null }[]>`select born, website from public.artists where id = ${a.id}`, { born: null, website: null });
   return {
     id: a.id, slug: a.slug, name: a.name, kind: a.kind, disambiguation: a.disambiguation, origin: a.origin, years: a.years,
     image: a.image_url,
     legalName: aliases.find((x) => x.kind === "Legal name")?.name ?? null,
     aliases: aliases.filter((x) => x.kind === "Also known as").map((x) => x.name),
     genres: genres.length ? genres.map((g) => g.name) : a.genres,
-    members, releases,
+    members, releases, ...more,
     source: { from: a.source === "user" ? "user" : "musicbrainz", label: "artist", id: a.musicbrainz_id },
     ...hist,
   };
@@ -274,20 +291,22 @@ export const getRelease = cache(async (slug: string): Promise<Release | null | u
        where c.release_id = ${r.id} and c.role = 'main' order by c.position`,
     sql<{ name: string; slug: string }[]>`select name, slug from public.artists where id = ${r.artist_id}`,
     sql<{ name: string }[]>`select g.name from public.release_genres rg join public.genres g on g.id = rg.genre_id where rg.release_id = ${r.id} order by rg.position`,
-    sql<{ disc: number; no: number | null; title: string; slug: string; duration: number | null }[]>`
-      select t.disc_no as disc, t.track_no as no, s.title, s.slug, coalesce(t.duration_seconds, s.duration_seconds) as duration
+    sql<{ id: string; disc: number; no: number | null; title: string; slug: string; duration: number | null }[]>`
+      select t.id, t.disc_no as disc, t.track_no as no, s.title, s.slug, coalesce(t.duration_seconds, s.duration_seconds) as duration
         from public.tracks t join public.songs s on s.id = t.song_id
        where t.release_id = ${r.id} order by t.disc_no, t.track_no nulls last, s.title`,
     sql<{ n: number }[]>`select count(*)::int as n from public.releases where edition_of = ${r.id}`,
     historyFor("release", r.id),
   ]);
+  const more = await extras(() => sql<{ label: string | null; country: string | null; language: string | null }[]>`
+    select label, country, language from public.releases where id = ${r.id}`, { label: null, country: null, language: null });
   return {
     id: r.id, slug: r.slug, title: r.title, type: r.type, year: r.year, releaseDate: r.release_date,
     cover: r.cover_url, coverSmall: r.cover_small_url,
     artists: credits.length ? credits : main,
     genres: genres.length ? genres.map((g) => g.name) : r.genres,
     editions: editions[0]?.n ?? 0,
-    tracks,
+    tracks, ...more,
     source: { from: r.source === "user" ? "user" : "musicbrainz", label: "release group", id: r.musicbrainz_release_group_id },
     ...hist,
   };
@@ -319,6 +338,10 @@ export const getSong = cache(async (slug: string): Promise<Song | null | undefin
     sql<{ id: string | null }[]>`select musicbrainz_recording_id as id from public.tracks where song_id = ${s.id} and musicbrainz_recording_id is not null limit 1`,
     historyFor("song", s.id),
   ]);
+  const [more, credits2] = await Promise.all([
+    extras(() => sql<{ language: string | null }[]>`select language from public.songs where id = ${s.id}`, { language: null }),
+    sql<{ role: string; name: string }[]>`select role, name from public.song_credits where song_id = ${s.id} order by position, created_at`.catch(() => []),
+  ]);
   const appearsOn = appears.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || a.title.localeCompare(b.title))
     .map((x) => ({ slug: x.slug, title: x.title, type: x.type, year: x.year, trackNo: x.track_no, cover: x.cover }));
   return {
@@ -327,7 +350,7 @@ export const getSong = cache(async (slug: string): Promise<Song | null | undefin
     original: s.orig_slug ? { title: s.orig_title!, slug: s.orig_slug } : null,
     firstReleased: appearsOn.find((x) => x.year)?.year ?? null,
     genres: genres.map((g) => g.name),
-    appearsOn,
+    appearsOn, language: more.language, credits: credits2,
     source: { from: s.source === "user" ? "user" : "musicbrainz", label: "recording", id: recording[0]?.id ?? null },
     ...hist,
   };

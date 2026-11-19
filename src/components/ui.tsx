@@ -45,8 +45,8 @@ export function FieldRows({ rows, labelWidth = 176, size = "lg" }: {
 }) {
   return (
     <dl className="border-t border-rule">
-      {rows.map((r) => (
-        <div key={r.label} className={`flex items-baseline gap-4 border-b border-hair leading-[1.25] ${size === "lg" ? "px-2 py-[9px]" : "py-[8px]"}`}>
+      {rows.map((r, i) => (
+        <div key={`${i}-${r.label}`} className={`flex items-baseline gap-4 border-b border-hair leading-[1.25] ${size === "lg" ? "px-2 py-[9px]" : "py-[8px]"}`}>
           <dt className={`field-label shrink-0 ${size === "lg" ? "w-[110px] md:w-[var(--lw)]" : "w-[var(--lw)]"}`} style={{ "--lw": `${labelWidth - (size === "lg" ? 16 : 0)}px` } as CSSProperties}>{r.label}</dt>
           <dd className={`min-w-0 font-mono break-words text-white ${size === "lg" ? "text-[15px]" : "text-[14px]"}`}>
             {r.value === "" || r.value == null ? <span className="text-white/40">—</span> : r.value}

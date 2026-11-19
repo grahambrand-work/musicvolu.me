@@ -53,6 +53,24 @@ On the server (applied 2026-11-18): `musicvolume_app` exists with a 20-connectio
 connection string is in `/root/musicvolume/database-url` (root-only), for `DATABASE_URL` in
 Coolify.
 
+## Suggested edits
+
+Every artist, release and song page has **Suggest edits**, which opens the page in edit
+mode (`?edit=1`). Changed fields get a teal outline and a "Was:" line, and the "Your
+changes" panel lists each change. Submitting saves one row in `musicvolume.submissions`
+(what changed, before and after, plus the note for editors) and a "submitted" row in
+`musicvolume.submission_events`, the log of everything that happens to it. "Before" is
+always read again from the database on the server. Nothing in the catalog changes until an
+editor and an admin publish it (review board, next step).
+
+Contributors get 10, 25 or 50 edits a month (tier 1, 2, 3); one submission counts as one
+edit however many fields it changes. Editors and admins have no limit. Field rules and the
+change list: `src/lib/edits.ts`. Saving: `src/lib/submissions.ts`, `src/app/edit-actions.ts`.
+
+Migration `20261118000200_submissions.sql` adds the two tables and a few catalog fields
+the pages now show (release label, country, language; song language and credits; artist
+born and website). Pages still work before it's applied; those fields just show empty.
+
 ## Run it on your own computer
 
 ```bash

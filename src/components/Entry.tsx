@@ -9,12 +9,14 @@ import { ClockIcon, PencilIcon } from "./icons";
 import SuggestEdit from "./SuggestEdit";
 import { Cover, ReviewDot, Tag } from "./ui";
 
-export function EntryPage({ kind, slug, q, signedIn, cover, round, tag, title, sub, source, history, pending, children }: {
+export function EntryPage({ kind, slug, q, signedIn, cover, round, tag, title, sub, source, history, pending, submitted, children }: {
   kind: Kind; slug: string; q?: string; signedIn: boolean;
   cover: string | null; round?: boolean; tag: string; title: string;
   /** The grey line under the title. Editable values in Courier, counts in Jost. */
   sub: ReactNode;
   source: Source; history: HistoryItem[]; pending: number;
+  /** Number of the edit just sent (?submitted=1042), for the thank-you note. */
+  submitted?: string;
   children: ReactNode;
 }) {
   return (
@@ -22,6 +24,12 @@ export function EntryPage({ kind, slug, q, signedIn, cover, round, tag, title, s
       <Link href={q ? `/search?q=${encodeURIComponent(q)}` : "/search"} className="mt-6 inline-block text-[14px] text-white/70 hover:text-white md:mt-[26px]">
         ← {q ? <>Results<span className="hidden md:inline"> for “{q}”</span></> : "Search"}
       </Link>
+
+      {submitted && /^\d+$/.test(submitted) && (
+        <p role="status" className="mt-5 flex items-center gap-2.5 rounded-[10px] border border-teal/60 bg-teal/8 px-4 py-3 text-[14px] md:text-[15px]">
+          <ReviewDot /> Thanks! Your edit #{submitted} is waiting for review. Editors check every edit before it goes live.
+        </p>
+      )}
 
       <div className="mt-6 flex items-start gap-4 md:mt-9 md:gap-7">
         <div className="hidden md:block"><Cover src={cover} size={140} round={round} /></div>
