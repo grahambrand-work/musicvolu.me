@@ -44,7 +44,15 @@ the status buttons. Who can do what follows Figma "P6 · What each tier can do"
 editors comment and move cards, but can't change a decision made by a higher tier;
 tier 3 editors and admins act in final review. Editors can't review their own
 submissions (admins can). Comments and likes: migration `20261119000100_review.sql`.
-Publishing into the catalog is not built yet.
+
+Publishing (`20261119000200_publish.sql`): the site's login can't write the catalog
+tables; it can only call `musicvolume.publish(number, member)`, which runs as the
+database owner, checks the submission is in final review and the member is a tier 3
+editor or admin, then writes the change. Every field changed by hand goes into the row's
+`edited_fields` (the MusicBrainz sync never overwrites those) and new artists, releases
+and songs get `source = 'user'` (the sync never touches those). A changed track title
+renames that song everywhere; typed artist names must match exactly one catalog artist.
+Apply it as the owner of the catalog tables.
 
 ## Accounts
 

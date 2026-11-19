@@ -79,3 +79,21 @@ export async function vote(target: "submission" | "comment", id: string, value: 
   revalidatePath("/review", "layout");
   return undefined;
 }
+
+/** Publish a submission in final review into the catalog (tier 3 editors and admins). */
+export async function publishSubmission(number: number): Promise<ActionResult | { href: string }> {
+  const v = await getViewer();
+  if (!v) return { error: "You've been signed out. Log in again." };
+  if (!can.publish(v)) return { error: "Only a tier 3 editor or an admin can publish." };
+  const sql = db()!;
+  try {
+    const [{ r }] = await sql<{ r: { type: string; slug: string } }[]>`select musicvolume.publish(${number}, ${v.id}) as r`;
+    revalidatePath("/", "layout");
+    return { href: `/${r.type}/${r.slug}` };
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "P0001" && err.message) return { error: err.message };
+    console.error("publish", number, err.message);
+    return { error: "Publishing failed. Nothing was changed. Try again, or tell an admin." };
+  }
+}

@@ -2,7 +2,8 @@
 // The buttons at the bottom of an opened card: Reject / Ask for changes / Send to final review,
 // or in final review Reject / Send back to editors / Publish. Which ones show depends on who is looking.
 import { useState, useTransition } from "react";
-import { moveSubmission } from "@/app/review/actions";
+import Link from "next/link";
+import { moveSubmission, publishSubmission } from "@/app/review/actions";
 
 type Move = Parameters<typeof moveSubmission>[1];
 export type Button = { move: Move | "publish"; label: string; style: "danger" | "outline" | "primary"; disabled?: boolean; title?: string };
@@ -10,8 +11,16 @@ export type Button = { move: Move | "publish"; label: string; style: "danger" | 
 export default function Decide({ number, buttons, note, locked }: { number: number; buttons: Button[]; note?: string; locked?: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  const [live, setLive] = useState<string | null>(null);
   const go = (b: Button) => {
-    if (b.move === "publish") return;
+    if (b.move === "publish") {
+      if (!confirm("Publish this? It goes live in the catalog straight away, logged under your name.")) return;
+      setErr(null);
+      return start(async () => {
+        const r = await publishSubmission(number);
+        if (r && "error" in r) setErr(r.error); else if (r) setLive(r.href);
+      });
+    }
     if (b.move === "reject" && !confirm("Reject this submission? It leaves the board, and the person who sent it sees it was rejected.")) return;
     setErr(null);
     start(async () => {
@@ -40,6 +49,7 @@ export default function Decide({ number, buttons, note, locked }: { number: numb
         </div>
       </div>
       {err && <p role="alert" className="mt-3 text-[13px] text-[#ff8a80]">{err}</p>}
+      {live && <p role="status" className="mt-3 text-[14px] text-[#7ad98f]">Published. <Link href={live} className="underline">See it live</Link></p>}
     </div>
   );
 }

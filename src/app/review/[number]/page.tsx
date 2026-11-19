@@ -192,6 +192,12 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
             </ul>
           </Block>
 
+          {s.status === "published" && (
+            <p className="mt-10 border-t border-rule pt-6 text-[15px] text-[#7ad98f]">
+              Published{last ? <> by <Name p={last} you={v.username} /></> : null}.{" "}
+              {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
+            </p>
+          )}
           {decide && <div className="mt-10"><Decide number={s.number} {...decide} /></div>}
         </main>
       </div>
@@ -344,8 +350,8 @@ function buttonsFor(v: Viewer, s: Submission, last: (Person & { id: string }) | 
       if (!can.publish(v)) return { buttons: [], note: "Waiting for a tier 3 editor or an admin to publish." };
       return {
         buttons: [reject, { move: "send_back", label: "Send back to editors", style: "outline" },
-          { move: "publish", label: "Publish", style: "primary", disabled: true, title: "Publishing comes in the next update" }],
-        note: "Publishing comes in the next update. It will make the change live and log it under your name.", locked,
+          { move: "publish", label: "Publish", style: "primary" }],
+        note: "Publishing makes it live and logs it under your name", locked,
       };
   }
   return null;
