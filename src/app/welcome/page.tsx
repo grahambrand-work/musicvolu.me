@@ -31,8 +31,7 @@ export default async function WelcomePage() {
         ))}
       </ul>
       <div className="flex flex-col gap-2.5 pt-2">
-        <Link href="/search" className="rounded-full bg-white py-2.5 text-center text-[16px] font-medium text-black hover:bg-white/85">Find something to fix</Link>
-        <Link href="/contribute" className="rounded-full border border-white py-2.5 text-center text-[16px] hover:bg-white/10">Add new music</Link>
+        <Link href="/" className="rounded-full bg-white py-2.5 text-center text-[16px] font-medium text-black hover:bg-white/85">Get started</Link>
       </div>
     </AuthShell>
   );
