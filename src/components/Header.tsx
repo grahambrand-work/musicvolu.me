@@ -49,7 +49,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
               <Link href="/contribute" aria-label="Contribute"><PlusIcon size={22} /></Link>
             </>
           )}
-          {!bare && <PhoneMenu signedIn={!!viewer} />}
+          {!bare && (viewer || !home) && <PhoneMenu signedIn={!!viewer} />}
         </div>
       </div>
     </header>
