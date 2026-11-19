@@ -57,14 +57,28 @@ create table if not exists musicvolume.email_tokens (
 create index if not exists email_tokens_member_idx on musicvolume.email_tokens (member_id, purpose, created_at desc);
 
 -- The site's database login, if it exists yet (created by hand with its own password):
--- read the catalog, read and write its own schema.
-do $$ begin
+-- read and write its own schema, read only the music catalog. Not "all tables in public":
+-- that schema also holds Noteworthy's user data (profiles, profile_private, logs, reviews…).
+do $$
+declare
+  t text;
+begin
   if exists (select 1 from pg_roles where rolname = 'musicvolume_app') then
     execute 'grant usage on schema musicvolume to musicvolume_app';
     execute 'grant select, insert, update, delete on all tables in schema musicvolume to musicvolume_app';
     execute 'alter default privileges in schema musicvolume grant select, insert, update, delete on tables to musicvolume_app';
     execute 'grant usage on schema public to musicvolume_app';
-    execute 'grant select on all tables in schema public to musicvolume_app';
+    foreach t in array array['artists', 'artist_aliases', 'artist_credits', 'artist_genres', 'artist_members',
+                             'similar_artists', 'genres', 'images', 'releases', 'release_genres', 'tracks',
+                             'songs', 'song_genres', 'song_versions', 'albums', 'album_tracks', 'videos', 'video_credits'] loop
+      if to_regclass('public.' || t) is not null then
+        execute format('grant select on public.%I to musicvolume_app', t);
+      end if;
+    end loop;
+    -- Edit history on entry pages: what changed and when, not who edited or reviewed it.
+    if to_regclass('public.catalog_edits') is not null then
+      execute 'grant select (entity_type, entity_id, action, note, status, reviewed_at, created_at) on public.catalog_edits to musicvolume_app';
+    end if;
   end if;
 end $$;
 
