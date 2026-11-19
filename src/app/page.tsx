@@ -5,7 +5,7 @@ import HomeBackdrop from "@/components/HomeBackdrop";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SearchBox from "@/components/SearchBox";
-import { getViewer, roleLabel } from "@/lib/viewer";
+import { getViewer, roleLabel, tierColor } from "@/lib/viewer";
 
 export default async function HomePage() {
   const viewer = await getViewer();
@@ -28,7 +28,7 @@ export default async function HomePage() {
           {viewer ? (
             <p className="mt-3 flex items-baseline justify-center gap-3 md:hidden">
               <span className="font-mono text-[15px]">{viewer.username}</span>
-              <span className="rounded-full bg-white px-3 py-0.5 text-[13px] text-black">{roleLabel(viewer)}</span>
+              <span className="rounded-full px-3 py-0.5 text-[13px] text-black" style={{ background: tierColor(viewer) }}>{roleLabel(viewer)}</span>
             </p>
           ) : (
             <>
