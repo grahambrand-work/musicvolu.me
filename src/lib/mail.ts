@@ -23,6 +23,21 @@ export async function sendMail(m: Mail) {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+// The buttons as pictures (public/email/*.png, white pill, black text, drawn at 2x). Mail apps
+// in dark mode recolour HTML buttons however they're built, but never pictures (Graham,
+// 2026-11-19: the button must be white). Width and height are the 1x size. A new button label
+// needs its picture made first; until then it falls back to the HTML button.
+const BUTTON_IMAGES: Record<string, { file: string; w: number; h: number }> = {
+  "Confirm my email": { file: "confirm-my-email.png", w: 168, h: 42 },
+  "Choose a new password": { file: "choose-a-new-password.png", w: 212, h: 42 },
+};
+
+function buttonImage(m: Mail) {
+  const b = BUTTON_IMAGES[m.button];
+  if (!b) return null;
+  return `<a href="${esc(m.link)}" style="display:inline-block;text-decoration:none"><img src="${esc(siteUrl(`/email/${b.file}`))}" width="${b.w}" height="${b.h}" alt="${esc(m.button)}" style="display:block;border:0;outline:none;width:${b.w}px;height:${b.h}px;background:#fff;border-radius:99px;color:#000;font-size:15px"></a>`;
+}
+
 function html(m: Mail) {
   // Black background set on the body AND the tables (Gmail and Outlook drop the body's), and
   // marked dark-only so mail apps in light mode don't flip it to white. The button's cell is
@@ -38,7 +53,7 @@ function html(m: Mail) {
 <tr><td style="font-size:28px;font-weight:700;color:#fff;padding-bottom:28px">musicvolu.me</td></tr>
 <tr><td style="font-size:22px;font-weight:600;color:#fff;padding-bottom:10px">${esc(m.heading)}</td></tr>
 <tr><td style="font-size:15px;line-height:1.5;color:#bdbdbd;padding-bottom:26px">${esc(m.body)}</td></tr>
-<tr><td><table role="presentation" cellspacing="0" cellpadding="0"><tr><td class="btn" bgcolor="#ffffff" style="background:#fff;background-image:linear-gradient(#ffffff,#ffffff);border-radius:99px"><a class="btn" href="${esc(m.link)}" style="display:inline-block;background:#fff;background-image:linear-gradient(#ffffff,#ffffff);color:#000;text-decoration:none;font-size:15px;font-weight:500;padding:11px 26px;border-radius:99px"><span class="gm-s"><span class="gm-d">${esc(m.button)}</span></span></a></td></tr></table></td></tr>
+<tr><td>${buttonImage(m) ?? `<table role="presentation" cellspacing="0" cellpadding="0"><tr><td class="btn" bgcolor="#ffffff" style="background:#fff;background-image:linear-gradient(#ffffff,#ffffff);border-radius:99px"><a class="btn" href="${esc(m.link)}" style="display:inline-block;background:#fff;background-image:linear-gradient(#ffffff,#ffffff);color:#000;text-decoration:none;font-size:15px;font-weight:500;padding:11px 26px;border-radius:99px"><span class="gm-s"><span class="gm-d">${esc(m.button)}</span></span></a></td></tr></table>`}</td></tr>
 <tr><td style="font-size:12px;line-height:1.5;color:#808080;padding-top:28px">${esc(m.footer)}</td></tr>
 </table></td></tr></table></body></html>`;
 }
