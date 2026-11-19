@@ -10,7 +10,7 @@ export default function LoginForm({ next }: { next: string }) {
     <form action={action} className="flex flex-col gap-[18px]">
       <FormError>{state?.error}</FormError>
       <input type="hidden" name="next" value={next} />
-      <Field label="Email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" defaultValue={state?.values?.email} />
+      <Field label="Email or username" name="email" type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="you@example.com" defaultValue={state?.values?.email} />
       <div className="flex flex-col gap-2">
         <Field label="Password" name="password" type="password" required autoComplete="current-password" />
         <Link href="/forgot-password" className="self-end text-[13px] text-white/70 hover:text-white">Forgot password?</Link>

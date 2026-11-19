@@ -98,20 +98,24 @@ export async function confirmEmail(token: string): Promise<string | void> {
 export async function login(_: FormState, form: FormData): Promise<FormState> {
   const sql = db();
   if (!sql) return { error: "Accounts aren’t connected yet." };
-  const email = str(form, "email").toLowerCase();
+  // Email or username (Graham, 2026-11-19). Usernames are unique ignoring case and can't hold "@".
+  const login = str(form, "email").toLowerCase();
   const password = String(form.get("password") ?? "");
   const next = safeNext(form.get("next"));
-  const values = { email };
-  const [m] = await sql<{ id: string; username: string; password_hash: string; verified: boolean; locked: boolean }[]>`
-    select id, username, password_hash, email_verified_at is not null as verified, coalesce(locked_until > now(), false) as locked
-      from musicvolume.members where lower(email) = ${email}`;
+  const values = { email: login };
+  const byEmail = login.includes("@");
+  const [m] = await sql<{ id: string; username: string; email: string; password_hash: string; verified: boolean; locked: boolean }[]>`
+    select id, username, email, password_hash, email_verified_at is not null as verified, coalesce(locked_until > now(), false) as locked
+      from musicvolume.members
+     where role <> 'system' and ${byEmail ? sql`lower(email) = ${login}` : sql`lower(username) = ${login}`}`;
+  const email = m?.email ?? login;
   const ok = await verifyPassword(password, m?.password_hash ?? DUMMY_HASH);
   if (m?.locked) return { values, error: "Too many tries. Wait 15 minutes, or reset your password." };
   if (!m || !ok) {
     if (m) await sql`update musicvolume.members set failed_logins = failed_logins + 1,
                        locked_until = case when failed_logins + 1 >= 8 then now() + interval '15 minutes' end
                      where id = ${m.id}`;
-    return { values, error: "That email and password don’t match." };
+    return { values, error: byEmail ? "That email and password don’t match." : "That username and password don’t match." };
   }
   if (!m.verified) {
     await sendVerify(m.id, email, m.username);
