@@ -11,7 +11,7 @@ export default function SignupForm({ next }: { next: string }) {
     <form action={action} className="flex flex-col gap-[18px]">
       {!state?.field && <FormError>{state?.error}</FormError>}
       <Field label="Username" name="username" required autoComplete="username" autoCapitalize="none" spellCheck={false}
-        placeholder="spacegraham" defaultValue={state?.values?.username} error={err("username")}
+        defaultValue={state?.values?.username} error={err("username")}
         hint="Shown on every change you make. Letters, numbers, dots and dashes." />
       <Field label="Email" name="email" type="email" required autoComplete="email" placeholder="you@example.com"
         defaultValue={state?.values?.email} error={err("email")} />
