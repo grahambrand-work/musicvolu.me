@@ -1,6 +1,6 @@
 // Top bar. Desktop: logo, search, then Contribute + your name + tier badge (or Log in /
 // Create account when signed out). Phone: logo, then search, add and menu icons.
-// On Home the bar has no search box, sits on the video, and has the ☰ menu on desktop too.
+// On Home the bar has no search box, sits on the video, and (signed in) has the ☰ menu on desktop too.
 import Link from "next/link";
 import { getViewer, roleLabel, tierColor } from "@/lib/viewer";
 import AccountMenu from "./AccountMenu";
@@ -38,7 +38,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
               <Link href="/signup" className="rounded-full bg-white px-3.5 py-[5px] text-[14px] text-black hover:bg-white/85">Create account</Link>
             </div>
           )}
-          {home && <PhoneMenu signedIn={!!viewer} />}
+          {home && viewer && <PhoneMenu signedIn />}
         </div>
 
         <div className="ml-auto flex items-center gap-5 md:hidden">
