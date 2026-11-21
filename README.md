@@ -141,3 +141,9 @@ and admins), not over a higher tier's decision. Tier 1 editors comment, ask for 
 to final review, but can't change edits or reject. Every change is logged ("changed the edit").
 A MusicBrainz submission an editor changed stays protected from the sync once published.
 New-entry submissions can't be changed yet.
+
+### Edit history and activity log
+
+- `/{artist|release|song}/[slug]/history`: every edit and MusicBrainz update on one entry, newest first, with "People who edited this". The entry page's side panel links to it.
+- `/activity`: the site-wide log (moves on submissions, plus one row per entry per MusicBrainz run), with the full trail under each submission row, filters and CSV export (`/activity/export`).
+- Signed-out visitors and tier 1–2 contributors see only what went live; tier 3 contributors, editors and admins also see pending and rejected edits, filters and export (`src/lib/history.ts`).
