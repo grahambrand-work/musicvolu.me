@@ -1,6 +1,7 @@
 "use server";
 // Adding new artists, releases and songs. Each one is saved as a "new" submission straight
 // away, so it shows up in search marked "in review" until an editor checks it.
+import { CoverError, fetchCover } from "@/lib/coverFetch";
 import { redirect } from "next/navigation";
 import { checkNew, nameOf, newChanges, tidyNew, type NewArtist, type NewKind, type PickedArtist } from "@/lib/newEntry";
 import { findArtists, OutOfEdits, saveSubmission, type ArtistChoice } from "@/lib/submissions";
@@ -44,6 +45,11 @@ export async function submitNew(kind: NewKind, raw: unknown, note: string): Prom
   const fields = checkNew(kind, v);
   if (Object.keys(fields).length) return { error: "Fix the highlighted fields first.", fields };
 
+  if ("cover" in v && v.cover) {
+    try { await fetchCover(v.cover); } catch (e) {
+      return { error: "Fix the highlighted fields first.", fields: { cover: e instanceof CoverError ? e.message : "That link didn't load. Check it opens in your browser." } };
+    }
+  }
   const by = "artists" in v ? v.artists : [];
   let number: number;
   try {

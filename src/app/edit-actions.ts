@@ -7,6 +7,7 @@ import { lastDecision, reviseBlock } from "@/lib/review";
 import { countChanges, describeChanges, normalize, validate, type Kind, type Values } from "@/lib/edits";
 import { getEditable, getSubmission, OutOfEdits, saveSubmission } from "@/lib/submissions";
 import { getViewer } from "@/lib/viewer";
+import { CoverError, fetchCover } from "@/lib/coverFetch";
 
 export type SubmitResult = { error: string; fields?: Record<string, string> } | undefined;
 
@@ -33,6 +34,9 @@ export async function submitEdit(kind: Kind, slug: string, after: Values, note: 
   const b = before as Record<string, unknown>, a = cleaned as Record<string, unknown>;
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   for (const k of Object.keys(a)) if (JSON.stringify(b[k]) !== JSON.stringify(a[k])) diff[k] = { from: b[k], to: a[k] };
+
+  const coverErr = await checkCover(diff);
+  if (coverErr) return { error: "Fix the highlighted fields first.", fields: { cover: coverErr } };
 
   let number: number;
   try {
@@ -74,6 +78,8 @@ export async function reviseEdit(number: number, after: Values, note: string): P
   const b = before as Record<string, unknown>, a = cleaned as Record<string, unknown>;
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   for (const k of Object.keys(a)) if (JSON.stringify(b[k]) !== JSON.stringify(a[k])) diff[k] = { from: b[k], to: a[k] };
+  const coverErr = await checkCover(diff);
+  if (coverErr) return { error: "Fix the highlighted fields first.", fields: { cover: coverErr } };
   const old = s.changes as Record<string, { to?: unknown }>;
   const moved = [...new Set([...Object.keys(diff), ...Object.keys(old)])]
     .filter((k) => JSON.stringify(old[k]?.to) !== JSON.stringify(diff[k]?.to));
@@ -107,6 +113,16 @@ export async function reviseEdit(number: number, after: Values, note: string): P
   revalidatePath("/review", "layout");
   revalidatePath(`/submission/${number}`);
   redirect(mine ? `/submission/${number}?updated=1` : `/review/${number}?updated=1`);
+}
+
+/** A suggested cover must be a link that loads as a usable image (nothing is stored yet). */
+async function checkCover(diff: Record<string, { from: unknown; to: unknown }>): Promise<string | null> {
+  if (!diff.cover) return null;
+  const link = String(diff.cover.to ?? "");
+  if (!link) return "Covers can't be removed here. Leave a note for the editors instead.";
+  try { await fetchCover(link); return null; } catch (e) {
+    return e instanceof CoverError ? e.message : "That link didn't load. Check it opens in your browser.";
+  }
 }
 
 /** Only the keys the entry actually has, as strings or the row arrays. Ignores anything extra. */

@@ -29,6 +29,7 @@ export async function getEditable(kind: Kind, slug: string): Promise<Editable | 
       releaseDate: isoDate(r.releaseDate) || (r.year ? String(r.year) : ""),
       label: r.label ?? "", country: r.country ?? "", language: r.language ?? "",
       genres: r.genres.join(", "),
+      cover: r.cover ?? r.coverSmall ?? "",
       tracks: r.tracks.map((t) => ({ id: t.id, title: t.title, duration: duration(t.duration) })),
     };
     return { id: r.id, slug: r.slug, name: r.title, cover: r.cover ?? r.coverSmall, values, fixed: {}, counts: {} };
