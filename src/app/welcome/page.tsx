@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AuthShell from "@/components/AuthShell";
-import { monthlyAllowance } from "@/lib/roles";
+import { getAllowances, limitFor, PROMOTE_AT } from "@/lib/members";
 import { getViewer, roleLabel, tierColor } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Welcome" };
@@ -11,12 +11,13 @@ export const metadata: Metadata = { title: "Welcome" };
 export default async function WelcomePage() {
   const v = await getViewer();
   if (!v) redirect("/login");
-  const allowance = monthlyAllowance(v);
+  const a = await getAllowances();
+  const allowance = await limitFor(v, a);
   const points = [
     allowance && { title: `${allowance} edits a month`, text: "Suggest changes or add new music. An editor checks each one before it goes live." },
     v.role === "contributor" && v.tier < 3 && { title: "Move up tiers", text: v.tier === 1
-      ? "25 published edits makes you a tier 2 contributor, with 25 edits a month and access to the review board."
-      : "More published edits makes you a tier 3 contributor, with 50 edits a month." },
+      ? `${PROMOTE_AT[2]} published edits makes you a tier 2 contributor, with ${a.now[2]} edits a month and access to the review board.`
+      : `${PROMOTE_AT[3]} published edits makes you a tier 3 contributor, with ${a.now[3]} edits a month.` },
     { title: "Credit where it’s due", text: "Your username shows on every change you make, in its edit history." },
   ].filter(Boolean) as { title: string; text: string }[];
   return (

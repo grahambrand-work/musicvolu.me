@@ -5,7 +5,7 @@ import { getArtist, getRelease, getSong } from "./catalog";
 import { db } from "./db";
 import type { ArtistValues, Kind, ReleaseValues, SongValues, Values } from "./edits";
 import { duration, isoDate } from "./format";
-import { monthlyAllowance } from "./roles";
+import { limitFor } from "./members";
 import type { Viewer } from "./viewer";
 
 export type Editable = {
@@ -60,9 +60,9 @@ export async function getEditable(kind: Kind, slug: string): Promise<Editable | 
 
 export type Allowance = { limit: number | null; used: number; left: number | null };
 
-/** Edits used this calendar month (UTC). Editors and admins have no limit. */
+/** Edits used this calendar month (UTC). Editors and admins have no limit; tier limits are set on the Members page. */
 export async function allowanceFor(v: Viewer, sql = db()!): Promise<Allowance> {
-  const limit = monthlyAllowance(v);
+  const limit = await limitFor(v);
   const [{ n }] = await sql<{ n: number }[]>`
     select count(*)::int as n from musicvolume.submissions s
      where s.member_id = ${v.id} and s.status <> 'withdrawn'
