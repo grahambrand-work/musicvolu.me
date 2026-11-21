@@ -111,7 +111,7 @@ export type Submission = {
   status: string; createdAt: Date; author: { username: string; role: Viewer["role"]; tier: Viewer["tier"] };
   entitySlug: string | null;
   dependsOn: { number: number; name: string; status: string } | null;
-  events: { action: string; toStatus: string | null; when: Date; who: string | null }[];
+  events: { action: string; fromStatus: string | null; toStatus: string | null; when: Date; who: string | null; whoRole: Viewer["role"] | null; whoTier: Viewer["tier"] | null }[];
 };
 
 const SLUG_TABLE: Record<Kind, string> = { artist: "artists", release: "releases", song: "songs" };
@@ -128,8 +128,8 @@ export async function getSubmission(number: number): Promise<Submission | null> 
      where s.number = ${number}`.catch(() => []);
   if (!s) return null;
   const [events, slug] = await Promise.all([
-    sql<{ action: string; to_status: string | null; created_at: Date; username: string | null }[]>`
-      select e.action, e.to_status, e.created_at, m.username from musicvolume.submission_events e
+    sql<{ action: string; from_status: string | null; to_status: string | null; created_at: Date; username: string | null; role: Viewer["role"] | null; tier: Viewer["tier"] | null }[]>`
+      select e.action, e.from_status, e.to_status, e.created_at, m.username, m.role, m.tier from musicvolume.submission_events e
         left join musicvolume.members m on m.id = e.member_id
        where e.submission_id = ${s.id} order by e.created_at`,
     s.entity_id ? sql<{ slug: string }[]>`select slug from ${sql("public." + SLUG_TABLE[s.entity_type])} where id = ${s.entity_id}` : Promise.resolve([]),
@@ -140,7 +140,7 @@ export async function getSubmission(number: number): Promise<Submission | null> 
     author: { username: s.username, role: s.role, tier: s.tier },
     entitySlug: slug[0]?.slug ?? null,
     dependsOn: s.dep_number ? { number: Number(s.dep_number), name: s.dep_name!, status: s.dep_status! } : null,
-    events: events.map((e) => ({ action: e.action, toStatus: e.to_status, when: e.created_at, who: e.username })),
+    events: events.map((e) => ({ action: e.action, fromStatus: e.from_status, toStatus: e.to_status, when: e.created_at, who: e.username, whoRole: e.role, whoTier: e.tier })),
   };
 }
 

@@ -2,6 +2,7 @@
 // and everything that has happened to it. New entries still in review link here from search.
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getViewer } from "@/lib/viewer";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import { Cover, FieldRows, ReviewDot, SectionLabel, Tag } from "@/components/ui";
@@ -30,6 +31,9 @@ export default async function SubmissionPage({ params, searchParams }: PageProps
   const to = (k: string) => s.changes[k]?.to;
   const tag = s.entityType === "artist" ? "Artist" : s.entityType === "song" ? "Song" : String(to("type") ?? "Release");
   const open = OPEN.includes(s.status);
+  const viewer = await getViewer();
+  const mine = !!viewer && viewer.username === s.author.username;
+  const canChange = mine && s.kind === "edit" && ["needs_review", "changes_requested"].includes(s.status);
 
   return (
     <>
@@ -40,6 +44,18 @@ export default async function SubmissionPage({ params, searchParams }: PageProps
           <p role="status" className="mt-5 flex items-center gap-2.5 rounded-[10px] border border-teal/60 bg-teal/8 px-4 py-3 text-[14px] md:text-[15px]">
             <ReviewDot /> Thanks! It’s in. {s.kind === "new" ? "It shows up in search now, marked “in review”." : ""} An editor checks every submission before it goes live.
           </p>
+        )}
+
+        {sp.updated && (
+          <p role="status" className="mt-5 flex items-center gap-2.5 rounded-[10px] border border-teal/60 bg-teal/8 px-4 py-3 text-[14px] md:text-[15px]">
+            <ReviewDot /> Saved. Editors see your updated edit{s.status === "in_review" ? ", and it's back in review" : ""}.
+          </p>
+        )}
+        {canChange && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[10px] border border-white/20 px-4 py-3 text-[14px] md:text-[15px]">
+            <span className="text-white/80">{s.status === "changes_requested" ? "An editor asked for changes. Update your edit and it goes back to them." : "Spotted a mistake? You can change this edit until an editor picks it up."}</span>
+            <Link href={`/submission/${s.number}/edit`} className="ml-auto rounded-full bg-white px-4 py-[7px] text-[14px] font-medium text-black hover:bg-white/85">Change edit</Link>
+          </div>
         )}
 
         <div className="mt-6 flex items-start gap-4 md:mt-9 md:gap-6">
@@ -82,7 +98,7 @@ export default async function SubmissionPage({ params, searchParams }: PageProps
               {s.events.map((e, i) => (
                 <li key={i} className="text-[14px]">
                   <span className="font-mono">{e.who ?? "musicvolu.me"}</span>{" "}
-                  <span className="text-white/75">{e.action === "submitted" ? "submitted this" : e.toStatus ? `moved it to ${STATUS[e.toStatus]?.toLowerCase() ?? e.toStatus}` : e.action}</span>
+                  <span className="text-white/75">{e.action === "submitted" ? "submitted this" : e.toStatus ? `moved it to ${STATUS[e.toStatus]?.toLowerCase() ?? e.toStatus}` : e.action === "edited" ? "changed the edit" : e.action}</span>
                   <span className="ml-2 text-[12px] text-white/45">{shortDate(e.when)}</span>
                 </li>
               ))}

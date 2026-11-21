@@ -4,7 +4,7 @@
 // "Was:" line; the "Your changes" panel lists every change and sends them for review together.
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { submitEdit, type SubmitResult } from "@/app/edit-actions";
+import { reviseEdit, submitEdit, type SubmitResult } from "@/app/edit-actions";
 import {
   CREDIT_ROLES, FIELDS, SUGGEST, countChanges, describeChanges, normalize,
   type Change, type CreditRow, type Kind, type ReleaseValues, type SongValues, type TrackRow, type Values,
@@ -18,6 +18,8 @@ type Props = {
   initial: Values; fixed: Record<string, string>;
   allowance: { limit: number | null; left: number | null };
   focus?: string;
+  /** Changing a sent edit: the live values (initial holds what the edit suggests) and its number. */
+  revise?: { number: number; base: Values; note: string; back: string };
   /** Read-only sections under the form (Discography, Appears on). */
   children?: ReactNode;
 };
@@ -26,9 +28,10 @@ export const box = "rounded-[4px] border bg-[#0b0b0c] px-3 font-mono text-[14px]
 export const boxH = "h-[34px]";
 export const border = (changed: boolean, err?: string) => (err ? "border-[#eb544d]" : changed ? "border-teal" : "border-white/25");
 
-export default function EditEntry({ kind, slug, name, tag, cover, round, initial, fixed, allowance, focus, children }: Props) {
-  const [values, setValues] = useState<Values>(initial);
-  const [note, setNote] = useState("");
+export default function EditEntry({ kind, slug, name, tag, cover, round, initial: suggested, fixed, allowance, focus, revise, children }: Props) {
+  const initial = revise?.base ?? suggested;
+  const [values, setValues] = useState<Values>(suggested);
+  const [note, setNote] = useState(revise?.note ?? "");
   const [result, setResult] = useState<SubmitResult>();
   const [sheet, setSheet] = useState(false);
   const [busy, start] = useTransition();
@@ -52,12 +55,12 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
   }, [dirty]);
 
   const set = (key: string, v: unknown) => setValues((cur) => ({ ...cur, [key]: v }) as Values);
-  const entryHref = `/${kind}/${slug}`;
+  const entryHref = revise?.back ?? `/${kind}/${slug}`;
 
   function submit() {
     setResult(undefined);
     start(async () => {
-      const r = await submitEdit(kind, slug, values, note);
+      const r = revise ? await reviseEdit(revise.number, values, note) : await submitEdit(kind, slug, values, note);
       if (r) setResult(r);
     });
   }
@@ -95,12 +98,12 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
         placeholder="Why are you making these changes? Add sources."
         className="mt-3 min-h-[86px] w-full resize-y rounded-[6px] border border-white/30 bg-transparent px-3 py-2.5 text-[14px] leading-snug outline-none placeholder:text-white/40 focus:border-white/80" />
       <p className="mt-3 text-[13px] text-white/55">
-        {outOfEdits ? `You've used all ${allowance.limit} edits this month. They reset on the 1st.` : <>Counts as 1 edit{left && ` · ${left}`}</>}
+        {revise ? <>Updates #{revise.number}. Doesn&rsquo;t count as a new edit.</> : outOfEdits ? `You've used all ${allowance.limit} edits this month. They reset on the 1st.` : <>Counts as 1 edit{left && ` · ${left}`}</>}
       </p>
       {result?.error && <p role="alert" className="mt-3 rounded-[6px] border border-[#eb544d]/60 bg-[#eb544d]/10 px-3 py-2 text-[13px] text-[#ffb3ad]">{result.error}</p>}
       <button type="button" onClick={submit} disabled={busy || count === 0 || outOfEdits}
         className="mt-4 rounded-full bg-white px-4 py-2 text-[14px] font-medium text-black hover:bg-white/85 disabled:opacity-50 max-md:w-full max-md:py-3 max-md:text-[16px]">
-        {busy ? "Submitting…" : count === 0 ? "Submit for review" : `Submit ${count} change${count === 1 ? "" : "s"} for review`}
+        {revise ? (busy ? "Saving…" : `Save ${count} change${count === 1 ? "" : "s"} to #${revise.number}`) : busy ? "Submitting…" : count === 0 ? "Submit for review" : `Submit ${count} change${count === 1 ? "" : "s"} for review`}
       </button>
     </>
   );
@@ -111,7 +114,7 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
       <div className="sticky top-[72px] z-20 hidden border-y border-teal/45 bg-[#0c1717] md:block">
         <div className="mx-auto flex h-[62px] max-w-[1440px] items-center gap-3 px-[60px]">
           <span className="size-2 rounded-full bg-teal" />
-          <p className="text-[15px] font-medium">You’re suggesting edits to {name}</p>
+          <p className="text-[15px] font-medium">{revise ? <>You’re changing #{revise.number}, edits to {name}</> : <>You’re suggesting edits to {name}</>}</p>
           <p className="text-[15px] text-white/55">· {count === 0 ? "no changes yet" : `${count} change${count === 1 ? "" : "s"} so far`}</p>
           <Link href={entryHref} onClick={cancel} className="ml-auto rounded-full border border-white/50 px-4 py-[7px] text-[14px] hover:border-white">Cancel</Link>
           <button type="button" onClick={() => noteRef.current?.focus()} className="rounded-full bg-white px-4 py-[7px] text-[14px] font-medium text-black hover:bg-white/85">Review &amp; submit</button>
