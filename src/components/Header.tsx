@@ -12,12 +12,13 @@ import SearchBox from "./SearchBox";
 /** home: on the wave picture, no search. bare: account pages (no search; phones show "Close"). */
 export default async function Header({ home = false, bare = false, q = "" }: { home?: boolean; bare?: boolean; q?: string }) {
   const viewer = await getViewer();
-  // Review board link: editors see what needs review; tier 3 editors and admins, what waits to publish.
+  // Review board button (Graham, 2026-11-21: always opens the board). Its count: what waits to
+  // publish for tier 3 editors and admins (pink), what needs review for everyone else.
   const counts = viewer && can.see(viewer) ? await getCounts(viewer) : null;
   const publisher = can.publish(viewer);
   const review = counts && (publisher
-    ? { label: "Final review", n: counts.final_review, href: "/review?view=list&stage=final_review", badge: "bg-[#fa99cc] text-black" }
-    : { label: "Review", n: counts.needs_review, href: "/review", badge: "bg-white text-black" });
+    ? { label: "Review board", n: counts.final_review, href: "/review", badge: "bg-[#fa99cc] text-black", title: "Waiting in final review" }
+    : { label: "Review board", n: counts.needs_review, href: "/review", badge: "bg-white text-black", title: "Waiting for review" });
   return (
     <header className={home ? "relative z-20" : `sticky top-0 z-30 border-b bg-black ${bare ? "border-white/15" : "border-line"}`}>
       <div className={`flex items-center gap-10 px-4 md:px-[60px] ${home ? "h-[100px] pt-4 md:h-auto md:pt-[30px]" : "h-[100px] pt-[30px] md:h-[72px] md:pt-0"}`}>
@@ -34,7 +35,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
             <>
               {review && !bare && (
                 <Link href={review.href} className="inline-flex items-center gap-2 rounded-full border border-white py-[5px] pr-1.5 pl-4 text-[14px] hover:bg-white/10">
-                  {review.label} <span className={`min-w-5 rounded-full px-1.5 text-center text-[12px] font-medium ${review.badge}`}>{review.n}</span>
+                  {review.label} <span title={review.title} className={`min-w-5 rounded-full px-1.5 text-center text-[12px] font-medium ${review.badge}`}>{review.n}</span>
                 </Link>
               )}
               {!home && !bare && (
