@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { can, lastDecision, type Status } from "@/lib/review";
 import { getViewer } from "@/lib/viewer";
+import { CoverError } from "@/lib/coverFetch";
+import { coverStorageReady, storeCover } from "@/lib/coverStore";
 
 export type ActionResult = { error: string } | undefined;
 
@@ -83,14 +85,47 @@ export async function vote(target: "submission" | "comment", id: string, value: 
   return undefined;
 }
 
+/**
+ * A linked cover, made ready to publish: downloaded once, checked, shrunk to 1200 px and 300 px,
+ * saved in storage and remembered on the submission. The publisher sees this exact copy before
+ * publishing, so a picture swapped behind the link afterwards can't slip in.
+ */
+export async function prepareCover(number: number): Promise<{ error: string } | { small: string; sha: string; width: number; height: number }> {
+  const v = await getViewer();
+  if (!v) return { error: "You've been signed out. Log in again." };
+  if (!can.publish(v)) return { error: "Only a tier 3 editor or an admin can publish." };
+  if (!coverStorageReady()) return { error: "Cover storage isn't set up on this site yet (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)." };
+  const sql = db()!;
+  const [s] = await sql<{ id: string; status: string; link: string | null }[]>`
+    select id, status, changes->'cover'->>'to' as link from musicvolume.submissions where number = ${number}`;
+  if (!s?.link) return { error: "This submission has no cover." };
+  if (s.status !== "final_review") return { error: "Only submissions in final review can be published." };
+  try {
+    const c = await storeCover(s.link);
+    await sql`update musicvolume.submissions set cover_stored = ${sql.json(c as never)} where id = ${s.id}`;
+    return { small: c.small, sha: c.sha, width: c.width, height: c.height };
+  } catch (e) {
+    if (e instanceof CoverError) return { error: `The cover can't be used: ${e.message}` };
+    console.error("prepareCover", number, (e as Error).message);
+    return { error: "Couldn't save the cover. Nothing was published. Try again, or tell an admin." };
+  }
+}
+
 /** Publish a submission in final review into the catalog (tier 3 editors and admins). */
-export async function publishSubmission(number: number): Promise<ActionResult | { href: string }> {
+export async function publishSubmission(number: number, coverSha?: string): Promise<ActionResult | { href: string }> {
   const v = await getViewer();
   if (!v) return { error: "You've been signed out. Log in again." };
   if (!can.publish(v)) return { error: "Only a tier 3 editor or an admin can publish." };
   const sql = db()!;
+  const [c] = await sql<{ has_cover: boolean; sha: string | null }[]>`
+    select changes ? 'cover' as has_cover, cover_stored->>'sha' as sha from musicvolume.submissions where number = ${number}`;
+  if (c?.has_cover && (!c.sha || c.sha !== coverSha)) return { error: "Check the cover again before publishing." };
   try {
-    const [{ r }] = await sql<{ r: { type: string; slug: string } }[]>`select musicvolume.publish(${number}, ${v.id}) as r`;
+    const r = await sql.begin(async (tx) => {
+      const [{ r }] = await tx<{ r: { type: string; slug: string } }[]>`select musicvolume.publish(${number}, ${v.id}) as r`;
+      if (c?.has_cover) await tx`select musicvolume.apply_cover(${number}, ${v.id})`;
+      return r;
+    });
     revalidatePath("/", "layout");
     return { href: `/${r.type}/${r.slug}` };
   } catch (e) {

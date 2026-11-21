@@ -8,6 +8,7 @@ import { RELEASE_TYPES, SUGGEST, splitList } from "@/lib/edits";
 import { ARTIST_TYPES, emptyNew, type NewArtist, type NewKind, type NewRelease, type NewSong, type NewValues, type PickedArtist } from "@/lib/newEntry";
 import ArtistPicker from "./ArtistPicker";
 import { box, Credits, Tracklist } from "./EditEntry";
+import CoverLink from "./CoverLink";
 import { Cover, Tag } from "./ui";
 
 const TITLES: Record<NewKind, string> = { artist: "New artist", release: "New release", song: "New song" };
@@ -209,8 +210,12 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
 
         <Section n={kind === "artist" ? 2 : 4} id="s-sources" title={kind === "release" ? "Cover art & sources" : "Sources"}>
           {kind === "release" && (
-            <div className="mb-5 rounded-[6px] border border-dashed border-white/25 px-4 py-4 text-[14px] text-white/60">
-              Cover uploads are coming soon. For now, link to the cover in your source and an editor will add it.
+            <div className="mb-6">
+              <label htmlFor="new-cover" className="field-label block pb-2 text-white/80">Cover <span className="ml-1 text-[11px] normal-case tracking-normal text-white/45">Optional</span></label>
+              <CoverLink id="new-cover" value={val("cover")} onChange={(x) => set("cover", x)} invalid={!!f.cover}
+                placeholder="Link to the cover image (https://…)" emptyHint="You can also add one later."
+                className={`h-10 w-full rounded-[4px] border bg-[#0b0b0c] px-3 text-[14px] outline-none placeholder:text-white/35 focus:border-white/80 ${f.cover ? "border-[#eb544d]" : "border-white/30"}`} />
+              {f.cover && <span role="alert" className="mt-1 block text-[12px] text-[#ff8a80]">{f.cover}</span>}
             </div>
           )}
           <label className="block">

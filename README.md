@@ -146,6 +146,20 @@ Migration `20261121000100_members_admin.sql` (apply as the catalog owner after t
 
 Until it's applied the site uses 10 / 25 / 50, nobody is promoted, and saving on `/members` says so.
 
+### Album covers by link
+
+People suggest a cover by pasting a link to an image (edit form, and the new-album form). Only
+the link is kept while it waits, so pending or rejected suggestions store nothing. The link is
+checked when it's sent (https only, public addresses only, JPEG/PNG/WebP, at least 500 × 500,
+under 10 MB). Editors see it next to the current cover, loaded through `/api/cover-preview` so
+their browsers never contact the other site. On Publish the site downloads it once, saves a
+1200 px and a 300 px square JPEG in the public `album-covers` bucket, shows the publisher that
+exact copy, and `musicvolume.apply_cover()` makes it the cover (marked hand-edited, so the
+MusicBrainz sync keeps it).
+
+Needs migration `20261121000200_cover_links.sql` (catalog owner) and, in the site's settings,
+`SUPABASE_URL` (https://api.noteworthy.my) and `SUPABASE_SERVICE_ROLE_KEY`.
+
 ### Changing a sent edit
 
 `/submission/[number]/edit` reopens the edit form with what the edit suggests. The sender can

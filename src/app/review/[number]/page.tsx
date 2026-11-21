@@ -201,7 +201,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
               {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
             </p>
           )}
-          {decide && <div className="mt-10"><Decide number={s.number} {...decide} /></div>}
+          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && s.entityType === "release"} /></div>}
         </main>
       </div>
     </>
@@ -254,6 +254,26 @@ function ChangeLines({ cs }: { cs: Change[] }) {
   );
 }
 
+/** A cover picture in the side-by-side rows. */
+function CoverImg({ src, label }: { src: string; label: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={label} width={120} height={120} className="size-[120px] rounded-[2px] bg-[#1a1c1f] object-cover" />;
+}
+
+/** The suggested cover: loaded through the site from the link, with the link itself underneath. */
+function LinkedCover({ s }: { s: Submission }) {
+  const link = text(s.changes.cover?.to);
+  const stored = s.status === "published";
+  return (
+    <span className="flex flex-col gap-2">
+      <CoverImg src={`/api/cover-preview?n=${s.number}`} label="Suggested cover" />
+      <span className="max-w-[320px] truncate text-[12px] text-white/50" title={link}>
+        {stored ? "Saved on musicvolu.me when published · from " : "From "}<a href={link} target="_blank" rel="noopener noreferrer nofollow" className="underline">{(() => { try { return new URL(link).hostname; } catch { return "link"; } })()}</a>
+      </span>
+    </span>
+  );
+}
+
 /** Every editable field: what's live now, and what's suggested (from the stored diff). */
 function editRows(s: Submission, live: Values | null): Row[] {
   const kind = s.entityType;
@@ -266,6 +286,13 @@ function editRows(s: Submission, live: Values | null): Row[] {
   const group = (k: string) => changes.filter((c) => (k === "tracks" ? c.key.startsWith("track") || c.key === "order" : c.key === k));
 
   const rows: Row[] = FIELDS[kind].filter((f) => f.type !== "readonly").map((f) => {
+    if (f.type === "image") {
+      const changed = !!s.changes[f.key];
+      const now = text(cur[f.key]) || text(s.changes[f.key]?.from);
+      return { key: f.key, label: f.label, changed,
+        live: now ? <CoverImg src={now} label="Current cover" /> : "",
+        suggested: changed ? <LinkedCover s={s} /> : null };
+    }
     const cs = group(f.key);
     const liveVal = f.type === "select" ? selectLabel(kind, f.key, text(cur[f.key])) : text(cur[f.key]);
     return { key: f.key, label: f.label, live: liveVal || (s.changes[f.key] ? text(s.changes[f.key].from) : ""), suggested: <ChangeLines cs={cs} />, changed: cs.length > 0 };
@@ -302,6 +329,7 @@ function newRows(s: Submission): Row[] {
     if (typeof val !== "string" || !val) continue;
     rows.push({ key: k, label, live: "", changed: true, suggested: k === "kind" ? (val === "Band" ? "Group" : "Person") : val });
   }
+  if (typeof to("cover") === "string" && to("cover")) rows.push({ key: "cover", label: "Cover", live: "", changed: true, suggested: <LinkedCover s={s} /> });
   const tracks = (to("tracks") as { title: string; duration: string }[] | undefined) ?? [];
   if (tracks.length) {
     rows.push({ key: "tracks", label: `Tracks · ${tracks.length}`, live: "", changed: true, suggested: (

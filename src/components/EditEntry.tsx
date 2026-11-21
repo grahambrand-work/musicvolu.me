@@ -11,6 +11,7 @@ import {
 } from "@/lib/edits";
 import { parseTracklist } from "@/lib/newEntry";
 import { PlusIcon } from "./icons";
+import CoverLink from "./CoverLink";
 import { Cover, Tag } from "./ui";
 
 type Props = {
@@ -156,6 +157,9 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
                     <div className="min-w-0 flex-1">
                       {f.type === "select" ? (
                         <Select id={id} value={raw} onChange={(v) => set(f.key, v)} options={f.options!} className={border(changed, err)} autoFocus={focus === f.key} />
+                      ) : f.type === "image" ? (
+                        <CoverLink id={id} value={raw === was ? "" : raw} onChange={(x) => set(f.key, x.trim() ? x : was)}
+                          placeholder={f.placeholder} className={`${box} ${boxH} w-full ${border(changed, err)}`} autoFocus={focus === f.key} invalid={!!err} />
                       ) : f.type === "readonly" ? (
                         <div id={id} className={`${box} ${boxH} flex w-full items-center border-white/12 text-white/50`} title="Worked out from its releases">{raw || "—"}</div>
                       ) : (
@@ -167,7 +171,7 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
                           className={`${box} ${boxH} w-full ${border(changed, err)}`} />
                       )}
                       {err ? <p role="alert" className="mt-1 text-[12px] text-[#ff8a80]">{err}</p>
-                        : changed && <p className="mt-1 text-[12px] text-teal">{was ? `Was: ${wasLabel}` : "New"}</p>}
+                        : changed && f.type !== "image" && <p className="mt-1 text-[12px] text-teal">{was ? `Was: ${wasLabel}` : "New"}</p>}
                       {f.type === "readonly" && <p className="mt-1 text-[12px] text-white/40">Worked out from the releases it appears on.</p>}
                     </div>
                   </div>

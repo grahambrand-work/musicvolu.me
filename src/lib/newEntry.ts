@@ -9,6 +9,8 @@ export type NewArtist = { name: string; kind: string; origin: string; started: s
 export type NewRelease = {
   type: string; artists: PickedArtist[]; title: string; releaseDate: string; label: string; country: string;
   language: string; genres: string; tracks: TrackRow[]; sources: string;
+  /** A link to the cover image; stored on our side only once it's published. */
+  cover: string;
 };
 export type NewSong = {
   title: string; artists: PickedArtist[]; duration: string; releaseDate: string; language: string; genres: string;
@@ -25,7 +27,7 @@ export function emptyNew(kind: NewKind, prefill: { title?: string; artist?: Pick
   if (kind === "release") {
     return {
       type: RELEASE_TYPES.includes(prefill.type ?? "") ? prefill.type! : "Album", artists, title: prefill.title ?? "",
-      releaseDate: "", label: "", country: "", language: "", genres: "", tracks: [], sources: "",
+      releaseDate: "", label: "", country: "", language: "", genres: "", tracks: [], sources: "", cover: "",
     };
   }
   return { title: prefill.title ?? "", artists, duration: "", releaseDate: "", language: "", genres: "", credits: [], sources: "" };
@@ -59,7 +61,7 @@ export function tidyNew(kind: NewKind, raw: unknown): NewValues {
       label: str("label"), country: str("country", 100), language: str("language", 100), genres: list("genres"),
       tracks: rows("tracks").map((t, i) => ({ id: rowId(t?.id, i), title: clean(t?.title).slice(0, 300), duration: clean(t?.duration).slice(0, 8) }))
         .filter((t) => t.title || t.duration),
-      sources,
+      sources, cover: (typeof r.cover === "string" ? r.cover.trim() : "").slice(0, 1000),
     };
   }
   return {
@@ -90,6 +92,7 @@ export function checkNew(kind: NewKind, v: NewValues, quick = false): Record<str
   if (kind === "release") {
     const r = v as NewRelease;
     if (!RELEASE_TYPES.includes(r.type)) e.type = "Pick a type.";
+    if (r.cover && !/^https:\/\/\S+$/i.test(r.cover)) e.cover = "Paste a link that starts with https://";
     r.tracks.forEach((t) => {
       if (!t.title) e[`track:${t.id}`] = "Every track needs a title.";
       else if (t.duration && !isDuration(t.duration)) e[`track:${t.id}`] = "Use minutes:seconds, like 3:54.";

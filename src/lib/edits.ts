@@ -11,6 +11,8 @@ export type CreditRow = { id: string; role: string; name: string };
 export type ReleaseValues = {
   title: string; artists: string; type: string; releaseDate: string;
   label: string; country: string; language: string; genres: string;
+  /** Live: the current cover's address. Suggested: a link to the new picture (stored only once it's published). */
+  cover: string;
   tracks: TrackRow[];
 };
 export type ArtistValues = {
@@ -29,7 +31,7 @@ export const CREDIT_ROLES = ["Songwriter", "Composer", "Lyricist", "Producer", "
 
 type FieldSpec = {
   key: string; label: string;
-  type: "text" | "select" | "list" | "date" | "duration" | "readonly";
+  type: "text" | "select" | "list" | "date" | "duration" | "readonly" | "image";
   options?: { value: string; label: string }[];
   /** Suggestions under a free-text box (country, language). */
   suggest?: "country" | "language";
@@ -49,6 +51,7 @@ export const FIELDS: Record<Kind, FieldSpec[]> = {
     { key: "country", label: "Country", type: "text", suggest: "country", max: 100 },
     { key: "language", label: "Language", type: "text", suggest: "language", max: 100 },
     { key: "genres", label: "Genres", type: "list", placeholder: "Separated by commas" },
+    { key: "cover", label: "Cover", type: "image", max: 1000, placeholder: "Link to the cover image (https://…)" },
   ],
   artist: [
     { key: "name", label: "Name", type: "text", max: 300 },
@@ -124,6 +127,10 @@ export function describeChanges(kind: Kind, before: Values, after: Values): Chan
     if (f.type === "readonly") continue;
     const was = (b[f.key] as string) ?? "", now = (a[f.key] as string) ?? "";
     if (was === now) continue;
+    if (f.type === "image") {
+      out.push({ key: f.key, label: f.label, was: was ? "Current cover" : "", now: now ? "New picture from a link" : "" });
+      continue;
+    }
     if (f.type === "list") {
       const w = splitList(was), n = splitList(now);
       const wl = new Set(w.map((x) => x.toLowerCase())), nl = new Set(n.map((x) => x.toLowerCase()));
@@ -182,6 +189,7 @@ export function validate(kind: Kind, v: Values): Record<string, string> {
     if (f.type === "duration" && val && !isDuration(val)) err[f.key] = "Use minutes:seconds, like 3:54.";
     if (f.type === "select" && !f.options!.some((o) => o.value === val)) err[f.key] = "Pick one from the list.";
     if (f.type === "list" && splitList(val).some((x) => x.length > 200)) err[f.key] = "One of these is too long.";
+    if (f.type === "image" && val && !/^https:\/\/\S+$/i.test(val)) err[f.key] = "Paste a link that starts with https://";
   }
   const nameKey = kind === "artist" ? "name" : "title";
   if (!(r[nameKey] as string)?.trim()) err[nameKey] = kind === "artist" ? "An artist needs a name." : "This needs a title.";
