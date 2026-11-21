@@ -75,7 +75,7 @@ export const fieldLabel = (k: string) => FIELD_LABEL[k] ?? k;
 
 const NOUN: Record<Kind, string> = { artist: "artist", release: "release", song: "song" };
 
-function summary(r: { kind: string; entity_type: Kind; changes: Record<string, { to: unknown }>; dep_name: string | null; linked_name: string | null }) {
+export function summary(r: { kind: string; entity_type: Kind; changes: Record<string, { to: unknown }>; dep_name: string | null; linked_name: string | null }) {
   if (r.kind === "new") {
     const type = r.entity_type === "release" ? String(r.changes.type?.to ?? "release").toLowerCase() : NOUN[r.entity_type];
     if (r.dep_name) return `New ${type} + new artist`;

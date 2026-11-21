@@ -42,7 +42,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
                   <PlusIcon /> Contribute
                 </Link>
               )}
-              <AccountMenu username={viewer.username} badge={roleLabel(viewer)} color={tierColor(viewer)} />
+              <AccountMenu username={viewer.username} badge={roleLabel(viewer)} color={tierColor(viewer)} admin={viewer.role === "admin"} />
             </>
           ) : (
             <div className="flex items-center gap-2.5">
@@ -50,7 +50,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
               <Link href="/signup" className="rounded-full bg-white px-3.5 py-[5px] text-[14px] text-black hover:bg-white/85">Create account</Link>
             </div>
           )}
-          {home && viewer && <PhoneMenu signedIn review={!!review} />}
+          {home && viewer && <PhoneMenu signedIn review={!!review} username={viewer.username} admin={viewer.role === "admin"} />}
         </div>
 
         <div className="ml-auto flex items-center gap-5 md:hidden">
@@ -61,7 +61,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
               <Link href="/contribute" aria-label="Contribute"><PlusIcon size={22} /></Link>
             </>
           )}
-          {!bare && (viewer || !home) && <PhoneMenu signedIn={!!viewer} review={!!review} />}
+          {!bare && (viewer || !home) && <PhoneMenu signedIn={!!viewer} review={!!review} username={viewer?.username} admin={viewer?.role === "admin"} />}
         </div>
       </div>
     </header>

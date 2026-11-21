@@ -23,8 +23,3 @@ export function tierColor(v: R) {
   return COLORS[v.role][Math.min(Math.max(v.tier, 1), 3) - 1];
 }
 
-/** Edits a contributor may suggest each month (editors and admins: no cap). */
-export function monthlyAllowance(v: R): number | null {
-  if (v.role !== "contributor") return null;
-  return [10, 25, 50][v.tier - 1] ?? 10;
-}
