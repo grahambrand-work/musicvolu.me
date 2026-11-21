@@ -1,6 +1,7 @@
 "use client";
 // Desktop: your username and tier badge; click for the account menu.
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { logout } from "@/lib/auth/actions";
 
 export default function AccountMenu({ username, badge, color }: { username: string; badge: string; color: string }) {
@@ -19,6 +20,7 @@ export default function AccountMenu({ username, badge, color }: { username: stri
       </button>
       {open && (
         <div className="absolute top-[calc(100%+12px)] right-0 z-40 w-52 overflow-hidden rounded-[10px] border border-white/15 bg-[#0d0d0e] text-[14px]">
+          <Link href="/activity" onClick={() => setOpen(false)} className="block border-b border-white/10 px-4 py-3 hover:bg-white/5">Activity log</Link>
           <form action={logout}>
             <button type="submit" className="block w-full px-4 py-3 text-left hover:bg-white/5">Log out</button>
           </form>

@@ -1,6 +1,7 @@
 // Shared layout for artist, release and song pages (Figma: "Phase 2 · Entry pages (B chosen)").
 // Desktop: details on the left, edit history and source on the right. Phone: one column.
 import Link from "next/link";
+import { MUSICBRAINZ_TEAL } from "@/lib/roles";
 import type { ReactNode } from "react";
 import type { HistoryItem, Kind, Source } from "@/lib/catalog";
 import { shortDate, shortId } from "@/lib/format";
@@ -55,7 +56,7 @@ export function EntryPage({ kind, slug, q, signedIn, cover, round, tag, title, s
         </div>
         <aside className="flex w-full shrink-0 flex-col gap-8 md:w-[340px]">
           {pending > 0 && <div className="hidden md:block"><PendingBox pending={pending} /></div>}
-          <History history={history} source={source} />
+          <History history={history} source={source} href={`/${kind}/${slug}/history`} />
           <div>
             <h2 className="field-label pb-2">Source</h2>
             <p className="text-[14px] text-white/70">
@@ -76,7 +77,7 @@ function PendingBox({ pending }: { pending: number }) {
   );
 }
 
-function History({ history, source }: { history: HistoryItem[]; source: Source }) {
+function History({ history, source, href }: { history: HistoryItem[]; source: Source; href: string }) {
   return (
     <div>
       <h2 className="field-label flex items-center gap-2 pb-3"><ClockIcon className="text-white/70" /> Edit history</h2>
@@ -88,10 +89,11 @@ function History({ history, source }: { history: HistoryItem[]; source: Source }
           </li>
         ))}
         <li className="text-[14px]">
-          <p className="font-mono text-[14px] text-mbsync">{source.from === "user" ? "members" : "mbsync"}</p>
+          <p className="font-mono text-[14px]" style={{ color: source.from === "user" ? "#999" : MUSICBRAINZ_TEAL }}>{source.from === "user" ? "members" : "MusicBrainz"}</p>
           <p className="text-white/85">{source.from === "user" ? "added by a member" : "imported from MusicBrainz"}</p>
         </li>
       </ul>
+      <Link href={href} className="mt-4 inline-block text-[14px] hover:underline">See full history →</Link>
     </div>
   );
 }
