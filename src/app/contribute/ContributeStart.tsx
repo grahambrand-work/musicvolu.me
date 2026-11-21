@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { suggestAction } from "@/app/actions";
+import { suggester } from "@/lib/suggestClient";
 import { SearchIcon } from "@/components/icons";
 import { Cover, ReviewDot, Tag } from "@/components/ui";
 import type { Hit } from "@/lib/catalog";
@@ -14,17 +14,18 @@ export default function ContributeStart({ initial }: { initial: string }) {
   const [found, setFound] = useState<{ q: string; hits: Hit[] } | null>(null);
   const [, start] = useTransition();
   const seq = useRef(0);
+  const [ask] = useState(suggester);
 
   useEffect(() => {
     const t = q.trim();
     if (t.length < 2) return;
     const n = ++seq.current;
     const timer = setTimeout(() => start(async () => {
-      const r = await suggestAction(t);
-      if (n === seq.current) setFound({ q: t, hits: r ? [...r.artists, ...r.releases, ...r.songs].sort((a, b) => a.score - b.score).slice(0, 6) : [] });
+      const r = await ask(t);
+      if (r !== "stale" && n === seq.current) setFound({ q: t, hits: r ? [...r.artists, ...r.releases, ...r.songs].sort((a, b) => a.score - b.score).slice(0, 6) : [] });
     }), 200);
     return () => clearTimeout(timer);
-  }, [q]);
+  }, [q, ask]);
 
   const t = q.trim();
   const hits = t.length >= 2 && found?.q === t ? found.hits : null;
