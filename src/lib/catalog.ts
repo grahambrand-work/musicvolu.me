@@ -41,7 +41,7 @@ function rank(title: string, q: string) {
   return 3;
 }
 
-type ArtistRow = { id: string; slug: string; name: string; origin: string | null; image_url: string | null; matched: string; releases: number; pop: number };
+type ArtistRow = { id: string; slug: string; name: string; genre: string | null; image_url: string | null; matched: string; releases: number; pop: number };
 type ReleaseRow = { id: string; slug: string; title: string; type: string; year: number | null; cover: string | null; artist: string; tracks: number; pop: number };
 type SongRow = { id: string; slug: string; title: string; duration_seconds: number | null; cover: string | null; artist: string; album: string | null; appearances: number; pop: number };
 
@@ -92,7 +92,9 @@ export async function searchCatalog(raw: string, filter: SearchFilter = "all", l
         from m
        order by artist_id, (lower(name) = ${p.replace(/%/g, " ")}) desc, length(name)
     )
-    select a.id, a.slug, a.name, a.origin, a.image_url, b.name as matched,
+    select a.id, a.slug, a.name, a.image_url, b.name as matched,
+           coalesce((select g.name from public.artist_genres ag join public.genres g on g.id = ag.genre_id
+                        where ag.artist_id = a.id order by ag.position limit 1), a.genres[1]) as genre,
            (select count(*) from public.releases r
              where r.artist_id = a.id and r.has_page and r.edition_of is null)::int as releases,
            ${popCol("artist", sql`a.id`)} as pop
@@ -103,7 +105,7 @@ export async function searchCatalog(raw: string, filter: SearchFilter = "all", l
   const artists = await findArtists(pattern, 20);
   const artistHits: Hit[] = artists.map((a) => ({
     kind: "artist", slug: a.slug, title: a.name, tag: "ARTIST", cover: a.image_url,
-    sub: [a.origin, `${a.releases} release${a.releases === 1 ? "" : "s"}`].filter(Boolean) as string[],
+    sub: [genreLabel(a.genre), `${a.releases} release${a.releases === 1 ? "" : "s"}`].filter(Boolean) as string[],
     score: Math.min(rank(a.name, q), rank(a.matched, q)) - BOOST * a.pop, weight: a.releases,
   }));
 
@@ -230,18 +232,158 @@ export async function searchCatalog(raw: string, filter: SearchFilter = "all", l
     .slice(0, limit);
 }
 
+/** An artist's main genre for the grey line under their name: "hip hop" → "Hip hop". */
+const genreLabel = (g: string | null) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : null);
+
 function fmt(s: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** The homepage dropdown: a few of each kind. */
-export async function suggest(q: string) {
-  const hits = (await searchCatalog(q, "all", 60)) ?? [];
+export type Suggestions = { artists: Hit[]; releases: Hit[]; songs: Hit[] };
+const SHOW: Record<Kind, number> = { artist: 2, release: 3, song: 3 };
+
+/**
+ * The dropdown while typing: a few of each kind, fast. It looks in public.search_popular (the
+ * catalog entries people are most likely after, ~1/20 of the catalog, with its own index) and
+ * only fetches details for the handful it shows. When a kind has too few popular matches it
+ * tops up from the full catalog, from 3 letters on (2-letter "contains" searches can't use the
+ * title index and would read millions of rows). The results page still runs the full search.
+ */
+export async function suggest(raw: string): Promise<Suggestions> {
+  const sql = db();
+  const empty: Suggestions = { artists: [], releases: [], songs: [] };
+  if (!sql) return empty;
+  const q = raw.trim().toLowerCase();
+  const { words, pattern } = likePattern(q);
+  if (!pattern) return empty;
+  if (!(await hasPopular(sql))) {
+    const hits = (await searchCatalog(q, "all", 60)) ?? [];
+    return { artists: hits.filter((h) => h.kind === "artist").slice(0, 2), releases: hits.filter((h) => h.kind === "release").slice(0, 3), songs: hits.filter((h) => h.kind === "song").slice(0, 3) };
+  }
+  const like = `%${pattern}%`;
+  const plain = pattern.replace(/%/g, " ");
+
+  // "lorde royals" / "royals lorde": one part names a popular artist, the rest the title.
+  const splits: { artist: string; title: string }[] = [];
+  if (words.length > 1 && words.length <= 4) {
+    for (let i = 1; i < words.length; i++) {
+      splits.push({ artist: words.slice(0, i).join(" "), title: `%${words.slice(i).join("%")}%` });
+      splits.push({ artist: words.slice(i).join(" "), title: `%${words.slice(0, i).join("%")}%` });
+    }
+  }
+  type Cand = { kind: Kind; item_id: string; name: string; popularity: number; combo: boolean };
+  const [byName, ...byCombo] = await Promise.all([
+    // Per kind, exact and starts-with first, then the most popular.
+    sql<Cand[]>`
+      select * from (
+        select kind, item_id, name, popularity, false as combo,
+               row_number() over (partition by kind order by (lower(name) = ${plain}) desc,
+                                  (lower(name) like ${`${pattern}%`}) desc, popularity desc) as n
+          from public.search_popular
+         -- Two letters can't use the name index: leave out songs (most of the list) until a third.
+         where name ilike ${like} ${q.length < 3 ? sql`and kind <> 'song'` : sql``}) x
+       where n <= 12`,
+    // An artist part under 3 letters can't use the name index, so those splits are skipped.
+    ...splits.filter((c) => c.artist.length >= 3).map((c) => sql<Cand[]>`
+      select sp.kind, sp.item_id, sp.name, sp.popularity, true as combo from public.search_popular sp
+       where sp.kind in ('release', 'song') and sp.name ilike ${c.title}
+         and sp.artist_id in (select a.item_id from public.search_popular a where a.kind = 'artist' and a.name ilike ${c.artist.replace(/[%_\\]/g, "")})
+       order by sp.popularity desc limit 6`),
+  ]);
+
+  // "lorde" also lists Lorde's best-known music.
+  const top = byName.filter((c) => c.kind === "artist" && rank(c.name, q) <= 1)
+    .sort((a, b) => b.popularity - a.popularity).slice(0, 2).map((c) => c.item_id);
+  const byArtist = top.length ? await sql<Cand[]>`
+    select * from (
+      select sp.kind, sp.item_id, sp.name, sp.popularity, true as combo,
+             row_number() over (partition by sp.kind order by sp.popularity desc) as n
+        from public.search_popular sp where sp.kind in ('release', 'song') and sp.artist_id in ${sql(top)}) x
+     where n <= 6` : [];
+
+  // Best score per entry, as on the results page: closer text, then popularity.
+  const best = new Map<string, { kind: Kind; id: string; score: number }>();
+  for (const c of [...byName, ...byCombo.flat(), ...byArtist.map((c) => ({ ...c, combo: false, artistMatch: true }))]) {
+    const text = "artistMatch" in c ? Math.min(rank(c.name, q), 2) : c.combo ? Math.min(rank(c.name, q), 1.5) : rank(c.name, q);
+    const score = text - BOOST * c.popularity;
+    const key = `${c.kind}:${c.item_id}`;
+    if (!best.has(key) || best.get(key)!.score > score) best.set(key, { kind: c.kind, id: c.item_id, score });
+  }
+  const pick = (k: Kind) => [...best.values()].filter((b) => b.kind === k).sort((a, b) => a.score - b.score).slice(0, SHOW[k] + 2);
+  const scoreOf = (k: Kind, id: string) => best.get(`${k}:${id}`)?.score ?? 3;
+  const ids = (k: Kind) => pick(k).map((b) => b.id);
+
+  // Top up a kind from the whole catalog when the popular list has too few (3+ letters only).
+  const topUp = <T,>(k: Kind, run: () => Promise<T[]>) => (q.length >= 3 && pick(k).length < SHOW[k] ? run() : Promise.resolve([] as T[]));
+  const none = ["00000000-0000-0000-0000-000000000000"];
+
+  const [artists, releases, songs, moreArtists, moreReleases, moreSongs, pending] = await Promise.all([
+    hydrateArtists(sql`a.id in ${sql(ids("artist").length ? ids("artist") : none)}`),
+    hydrateReleases(sql`r.id in ${sql(ids("release").length ? ids("release") : none)}`),
+    hydrateSongs(sql`s.id in ${sql(ids("song").length ? ids("song") : none)}`),
+    topUp("artist", () => hydrateArtists(sql`a.id in (select id from public.artists where name ilike ${like} limit 5)`)),
+    topUp("release", () => hydrateReleases(sql`r.id in (select id from public.releases where title ilike ${like} and has_page and edition_of is null limit 5)`)),
+    topUp("song", () => hydrateSongs(sql`s.id in (select id from public.songs where title ilike ${like} limit 5)`)),
+    sql<{ number: string; entity_type: Kind; entity_name: string; artist: string | null; rtype: string | null }[]>`
+      select number, entity_type, entity_name, changes->'artists'->'to'->0->>'name' as artist, changes->'type'->>'to' as rtype
+        from musicvolume.submissions
+       where kind = 'new' and status in ('needs_review', 'in_review', 'changes_requested', 'final_review') and entity_name ilike ${like}
+       order by created_at desc limit 5`.catch(() => []),
+  ]);
+
+  const seen = new Set<string>();
+  const finish = (k: Kind, list: Hit[]) => list
+    .filter((h) => { const key = `${h.kind}:${h.slug}`; if (seen.has(key)) return false; seen.add(key); return true; })
+    .sort((a, b) => a.score - b.score || b.weight - a.weight)
+    .slice(0, SHOW[k]);
+  const pend = (k: Kind): Hit[] => pending.filter((p) => p.entity_type === k).map((p) => ({
+    kind: k, slug: `review-${p.number}`, title: p.entity_name, cover: null, review: Number(p.number),
+    tag: k === "artist" ? "ARTIST" : k === "song" ? "SONG" : (p.rtype ?? "Album").toUpperCase(),
+    sub: ["In review", p.artist].filter(Boolean) as string[], score: rank(p.entity_name, q) + 0.1, weight: 0,
+  }));
   return {
-    artists: hits.filter((h) => h.kind === "artist").slice(0, 2),
-    releases: hits.filter((h) => h.kind === "release").slice(0, 3),
-    songs: hits.filter((h) => h.kind === "song").slice(0, 3),
+    artists: finish("artist", [...artists.map((h) => ({ ...h, score: scoreOf("artist", h.id) })),
+      ...moreArtists.map((h) => ({ ...h, score: rank(h.title, q) })), ...pend("artist")]),
+    releases: finish("release", [...releases.map((h) => ({ ...h, score: scoreOf("release", h.id) })),
+      ...moreReleases.map((h) => ({ ...h, score: rank(h.title, q) })), ...pend("release")]),
+    songs: finish("song", [...songs.map((h) => ({ ...h, score: scoreOf("song", h.id) })),
+      ...moreSongs.map((h) => ({ ...h, score: rank(h.title, q) })), ...pend("song")]),
   };
+
+  // Details for the few entries shown.
+  type Sql = NonNullable<ReturnType<typeof db>>;
+  type Frag = ReturnType<Sql>;
+  async function hydrateArtists(where: Frag): Promise<(Hit & { id: string })[]> {
+    const rows = await sql!<{ id: string; slug: string; name: string; genre: string | null; image_url: string | null; releases: number }[]>`
+      select a.id, a.slug, a.name, a.image_url,
+             coalesce((select g.name from public.artist_genres ag join public.genres g on g.id = ag.genre_id
+                        where ag.artist_id = a.id order by ag.position limit 1), a.genres[1]) as genre,
+             (select count(*) from public.releases r where r.artist_id = a.id and r.has_page and r.edition_of is null)::int as releases
+        from public.artists a where ${where}`;
+    return rows.map((a) => ({ id: a.id, kind: "artist", slug: a.slug, title: a.name, tag: "ARTIST", cover: a.image_url, score: 3, weight: a.releases,
+      sub: [genreLabel(a.genre), `${a.releases} release${a.releases === 1 ? "" : "s"}`].filter(Boolean) as string[] }));
+  }
+  async function hydrateReleases(where: Frag): Promise<(Hit & { id: string })[]> {
+    const rows = await sql!<{ id: string; slug: string; title: string; type: string; year: number | null; cover: string | null; artist: string; tracks: number }[]>`
+      select r.id, r.slug, r.title, r.type, r.year, coalesce(r.cover_small_url, r.cover_url) as cover, a.name as artist,
+             (select count(*) from public.tracks t where t.release_id = r.id)::int as tracks
+        from public.releases r join public.artists a on a.id = r.artist_id
+       where r.has_page and r.edition_of is null and ${where}`;
+    return rows.map((r) => ({ id: r.id, kind: "release", slug: r.slug, title: r.title, tag: r.type.toUpperCase(), cover: r.cover, score: 3,
+      weight: r.tracks + (r.type === "Album" ? 1000 : 0),
+      sub: [r.artist, r.year ? String(r.year) : null, `${r.tracks} track${r.tracks === 1 ? "" : "s"}`].filter(Boolean) as string[] }));
+  }
+  async function hydrateSongs(where: Frag): Promise<(Hit & { id: string })[]> {
+    const rows = await sql!<{ id: string; slug: string; title: string; duration_seconds: number | null; cover: string | null; artist: string; album: string | null }[]>`
+      select s.id, s.slug, s.title, s.duration_seconds, coalesce(s.cover_small_url, s.cover_url) as cover, a.name as artist,
+             (select coalesce(p.title, r.title) from public.tracks t
+                join public.releases r on r.id = t.release_id
+                left join public.releases p on p.id = r.edition_of
+               where t.song_id = s.id order by coalesce(p.year, r.year) nulls last limit 1) as album
+        from public.songs s join public.artists a on a.id = s.artist_id where ${where}`;
+    return rows.map((s) => ({ id: s.id, kind: "song", slug: s.slug, title: s.title, tag: "SONG", cover: s.cover, score: 3, weight: 0,
+      sub: [s.artist, s.album, s.duration_seconds ? fmt(s.duration_seconds) : null].filter(Boolean) as string[] }));
+  }
 }
 
 // ---------------------------------------------------------------- entries

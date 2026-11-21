@@ -3,10 +3,10 @@
 // songs (Figma "Home · desktop · typing"); Enter or "See all results" opens the results page.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { suggestAction } from "@/app/actions";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Hit } from "@/lib/catalog";
 import { hitHref } from "@/lib/links";
+import { suggester } from "@/lib/suggestClient";
 import { ArrowIcon, SearchIcon } from "./icons";
 import { Cover, ReviewDot } from "./ui";
 
@@ -23,23 +23,21 @@ export default function SearchBox({ initial = "", variant = "header", autoFocus 
   const [found, setGroups] = useState<Groups | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [, startTransition] = useTransition();
   const listId = useId();
   const box = useRef<HTMLDivElement>(null);
   const latest = useRef("");
+  const [ask] = useState(suggester);
 
   useEffect(() => {
     const term = q.trim();
     latest.current = term;
     if (term.length < 2) return;
-    const t = setTimeout(() => {
-      startTransition(async () => {
-        const res = await suggestAction(term);
-        if (latest.current === term) setGroups(res);
-      });
-    }, 180);
+    const t = setTimeout(async () => {
+      const res = await ask(term);
+      if (res !== "stale" && latest.current === term) setGroups(res);
+    }, 150);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, ask]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
