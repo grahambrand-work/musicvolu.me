@@ -31,6 +31,8 @@ and admins publish it into the catalog. Designs live in the Figma file "Musicvol
 
 | Create account → check email → confirm → Welcome | `/signup`, `/signup/check`, `/verify`, `/welcome` | P7 |
 | Log in, forgot / reset password | `/login`, `/forgot-password`, `/reset-password` | P7 |
+| Contributions (yours; editors and admins can open anyone's) | `/members/[username]` | 90:993, 90:1154 |
+| Members and roles (admins) | `/members` | 93:1098, 93:1311 |
 
 Contribute is still a placeholder.
 
@@ -131,6 +133,18 @@ field into `musicvolume.mb_changes` and then calls `select musicvolume.record_mb
 - a change to a field nobody edited on musicvolu.me is applied and logged in `musicvolume.catalog_activity`, by the account **MusicBrainz** (shown in teal, can't sign in);
 - a change to a field edited on musicvolu.me (in the row's `edited_fields`) is not applied: it goes on the review board as a submission by MusicBrainz. Publishing takes MusicBrainz's value, rejecting keeps ours. A value already proposed once isn't proposed again;
 - band members and track lists can't be reviewed yet, so a contradiction there is logged as "kept".
+
+### Members, allowances and tiers
+
+Migration `20261121000100_members_admin.sql` (apply as the catalog owner after the others):
+
+- `tier_allowances`: edits a month per contributor tier (starts at 10 / 25 / 50). Admins change
+  them on `/members`; a change starts on the 1st of next month, and every saved value is kept;
+- `role_changes`: every role change an admin makes on `/members`, plus automatic promotions;
+- a contributor moves to tier 2 at 25 published edits and to tier 3 at 100 (trigger on
+  `submissions`). Promotion only goes up; admins can set any role by hand, but not their own.
+
+Until it's applied the site uses 10 / 25 / 50, nobody is promoted, and saving on `/members` says so.
 
 ### Changing a sent edit
 
