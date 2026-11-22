@@ -201,7 +201,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
               {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
             </p>
           )}
-          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && s.entityType === "release"} /></div>}
+          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && (s.entityType === "release" || s.entityType === "artist")} /></div>}
         </main>
       </div>
     </>
@@ -290,7 +290,7 @@ function editRows(s: Submission, live: Values | null): Row[] {
       const changed = !!s.changes[f.key];
       const now = text(cur[f.key]) || text(s.changes[f.key]?.from);
       return { key: f.key, label: f.label, changed,
-        live: now ? <CoverImg src={now} label="Current cover" /> : "",
+        live: now ? <CoverImg src={now} label={`Current ${f.label.toLowerCase()}`} /> : "",
         suggested: changed ? <LinkedCover s={s} /> : null };
     }
     const cs = group(f.key);
@@ -329,7 +329,7 @@ function newRows(s: Submission): Row[] {
     if (typeof val !== "string" || !val) continue;
     rows.push({ key: k, label, live: "", changed: true, suggested: k === "kind" ? (val === "Band" ? "Group" : "Person") : val });
   }
-  if (typeof to("cover") === "string" && to("cover")) rows.push({ key: "cover", label: "Cover", live: "", changed: true, suggested: <LinkedCover s={s} /> });
+  if (typeof to("cover") === "string" && to("cover")) rows.push({ key: "cover", label: s.entityType === "artist" ? "Photo" : "Cover", live: "", changed: true, suggested: <LinkedCover s={s} /> });
   const tracks = (to("tracks") as { title: string; duration: string }[] | undefined) ?? [];
   if (tracks.length) {
     rows.push({ key: "tracks", label: `Tracks · ${tracks.length}`, live: "", changed: true, suggested: (

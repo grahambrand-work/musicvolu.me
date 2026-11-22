@@ -18,6 +18,8 @@ export type ReleaseValues = {
 export type ArtistValues = {
   name: string; note: string; legalName: string; kind: string; born: string;
   origin: string; years: string; genres: string; aliases: string; website: string;
+  /** Live: the current photo's address. Suggested: a link to a new photo (stored only once it's published). */
+  cover: string;
 };
 export type SongValues = {
   title: string; artists: string; duration: string; language: string; genres: string;
@@ -55,6 +57,7 @@ export const FIELDS: Record<Kind, FieldSpec[]> = {
   ],
   artist: [
     { key: "name", label: "Name", type: "text", max: 300 },
+    { key: "cover", label: "Photo", type: "image", max: 1000, placeholder: "Link to a photo of the artist (https://…)" },
     { key: "note", label: "Note", type: "text", max: 300, placeholder: "Tells apart artists with the same name" },
     { key: "legalName", label: "Legal name", type: "text", max: 300 },
     { key: "kind", label: "Type", type: "select", options: ARTIST_KINDS },
@@ -128,7 +131,7 @@ export function describeChanges(kind: Kind, before: Values, after: Values): Chan
     const was = (b[f.key] as string) ?? "", now = (a[f.key] as string) ?? "";
     if (was === now) continue;
     if (f.type === "image") {
-      out.push({ key: f.key, label: f.label, was: was ? "Current cover" : "", now: now ? "New picture from a link" : "" });
+      out.push({ key: f.key, label: f.label, was: was ? `Current ${f.label.toLowerCase()}` : "", now: now ? "New picture from a link" : "" });
       continue;
     }
     if (f.type === "list") {

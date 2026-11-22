@@ -5,7 +5,9 @@ import { CREDIT_ROLES, isDuration, isPartialDate, RELEASE_TYPES, splitList, type
 /** An artist on a new release or song: one from the catalog (id) or one still in review (review = its submission number). */
 export type PickedArtist = { id?: string; review?: number; name: string };
 
-export type NewArtist = { name: string; kind: string; origin: string; started: string; genres: string; website: string; sources: string };
+export type NewArtist = { name: string; kind: string; origin: string; started: string; genres: string; website: string; sources: string;
+  /** A link to a photo of the artist; stored on our side only once it's published. */
+  cover: string };
 export type NewRelease = {
   type: string; artists: PickedArtist[]; title: string; releaseDate: string; label: string; country: string;
   language: string; genres: string; tracks: TrackRow[]; sources: string;
@@ -23,7 +25,7 @@ export const ARTIST_TYPES = [{ value: "Solo artist", label: "Person" }, { value:
 
 export function emptyNew(kind: NewKind, prefill: { title?: string; artist?: PickedArtist | null; type?: string } = {}): NewValues {
   const artists = prefill.artist ? [prefill.artist] : [];
-  if (kind === "artist") return { name: prefill.title ?? "", kind: "Solo artist", origin: "", started: "", genres: "", website: "", sources: "" };
+  if (kind === "artist") return { name: prefill.title ?? "", kind: "Solo artist", origin: "", started: "", genres: "", website: "", sources: "", cover: "" };
   if (kind === "release") {
     return {
       type: RELEASE_TYPES.includes(prefill.type ?? "") ? prefill.type! : "Album", artists, title: prefill.title ?? "",
@@ -52,7 +54,8 @@ export function tidyNew(kind: NewKind, raw: unknown): NewValues {
   const list = (k: string) => splitList(typeof r[k] === "string" ? (r[k] as string) : "").join(", ").slice(0, 1000);
   const sources = (typeof r.sources === "string" ? r.sources.trim() : "").slice(0, 2000);
   if (kind === "artist") {
-    return { name: str("name"), kind: str("kind"), origin: str("origin", 200), started: str("started", 10), genres: list("genres"), website: str("website"), sources };
+    return { name: str("name"), kind: str("kind"), origin: str("origin", 200), started: str("started", 10), genres: list("genres"), website: str("website"), sources,
+      cover: (typeof r.cover === "string" ? r.cover.trim() : "").slice(0, 1000) };
   }
   const rows = (k: string) => (Array.isArray(r[k]) ? (r[k] as Record<string, unknown>[]) : []).slice(0, 400);
   if (kind === "release") {
@@ -81,6 +84,7 @@ export function checkNew(kind: NewKind, v: NewValues, quick = false): Record<str
     if (!ARTIST_TYPES.some((t) => t.value === a.kind)) e.kind = "Pick Person or Group.";
     if (a.started && !/^\d{4}$/.test(a.started)) e.started = "Just the year, like 2019.";
     if (a.website && !/^(https?:\/\/)?[^\s/]+\.[^\s]+$/.test(a.website)) e.website = "That doesn't look like a web address.";
+    if (a.cover && !/^https:\/\/\S+$/i.test(a.cover)) e.cover = "Paste a link that starts with https://";
     if (!quick && !a.sources) e.sources = "Tell editors where this information came from.";
     return e;
   }
