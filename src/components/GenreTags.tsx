@@ -71,7 +71,12 @@ export default function GenreTags({ id, value, onChange, className, invalid, aut
             {t}
             {genres.length > 0 && !known.has(key(t)) && <span className="rounded-full border border-teal/60 px-1.5 text-[10px] text-teal">new</span>}
             <button type="button" aria-label={`Remove ${t}`} onClick={(e) => { e.stopPropagation(); remove(i); }}
-              className="grid size-4 place-items-center rounded-full text-white/60 hover:bg-white/15 hover:text-white">×</button>
+              className="grid size-4 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/15 hover:text-white">
+              {/* A drawn ×, so it sits in the exact middle (the text character rides high). */}
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden className="block">
+                <path d="M1.5 1.5l5 5M6.5 1.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
           </span>
         ))}
         <input ref={input} id={id} value={text} autoFocus={autoFocus} autoComplete="off" spellCheck={false}
