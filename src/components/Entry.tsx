@@ -99,25 +99,7 @@ function History({ history, source, href }: { history: HistoryItem[]; source: So
 }
 
 /** A list of releases (discography, "appears on") with small covers. */
-export function ReleaseList({ items }: { items: { slug: string; title: string; type: string; year: number | null; right: string; cover: string | null }[] }) {
-  return (
-    <ul className="border-t border-rule">
-      {items.map((r) => (
-        <li key={r.slug} className="border-b border-hair">
-          <Link href={`/release/${r.slug}`} className="flex items-center gap-3.5 px-2 py-2 hover:bg-white/4">
-            <Cover src={r.cover} size={32} />
-            <span className="min-w-0 flex-1 truncate font-mono text-[15px]">{r.title}</span>
-            <span className="flex shrink-0 items-baseline gap-3 text-white/60">
-              <span className="hidden font-mono text-[12px] uppercase md:inline">{r.type}</span>
-              <span className="font-mono text-[12px]">{r.year ?? ""}</span>
-              <span className="w-16 text-right text-[13px]">{r.right}</span>
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
+export { default as ReleaseList } from "./ReleaseList";
 
 export function Dot() {
   return <span className="text-white/40">·</span>;

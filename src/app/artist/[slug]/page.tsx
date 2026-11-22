@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import EditMode from "@/components/EditMode";
 import { getViewer } from "@/lib/viewer";
-import { Dot, EntryPage, ReleaseList } from "@/components/Entry";
+import { Dot, EntryPage } from "@/components/Entry";
+import DiscographySearch from "@/components/DiscographySearch";
 import { PlusIcon } from "@/components/icons";
 import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
 import { getArtist } from "@/lib/catalog";
@@ -69,10 +70,11 @@ export default async function ArtistPage({ params, searchParams }: PageProps<"/a
             </section>
           )}
           <section>
-            <SectionLabel right={<Link href={`/contribute?artist=${a.slug}`} className="inline-flex items-center gap-1.5 text-[14px] hover:underline"><PlusIcon /> Add a release</Link>}>
-              Discography · {a.releases.length}
-            </SectionLabel>
-            <ReleaseList items={a.releases.map((r) => ({ ...r, right: plural(r.tracks, "track") }))} />
+            <DiscographySearch items={a.releases.map((r) => ({ ...r, right: plural(r.tracks, "track") }))} label={
+              <SectionLabel right={<Link href={`/contribute?artist=${a.slug}`} className="inline-flex items-center gap-1.5 text-[14px] hover:underline"><PlusIcon /> Add a release</Link>}>
+                Discography · {a.releases.length}
+              </SectionLabel>
+            } />
             <p className="pt-3 text-[13px] text-white/50">Releases are edited on their own pages.</p>
           </section>
         </EntryPage>
