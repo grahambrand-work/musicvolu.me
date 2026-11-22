@@ -1,6 +1,7 @@
 "use client";
 // "New album / song / artist" (Figma "B · Long form with live preview"): numbered sections on
 // the left with a step list beside them, and a live preview with Submit on the right.
+import GenreTags from "./GenreTags";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { submitNew, type NewResult } from "@/app/contribute/actions";
@@ -188,7 +189,11 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
                 {field("language", "Language", { list: "language", max: 100 })}
               </>
             )}
-            <div className="md:col-span-2">{field("genres", "Genres", { placeholder: "Separated by commas", max: 1000 })}</div>
+            <div className="md:col-span-2">
+              <span className="field-label block pb-2 text-white/80">Genres</span>
+              <GenreTags value={val("genres")} onChange={(v) => set("genres", v)} className={`${box} ${f.genres ? "border-[#eb544d]" : "border-white/30"}`} invalid={!!f.genres} />
+              {f.genres && <span role="alert" className="mt-1 block text-[12px] text-[#ff8a80]">{f.genres}</span>}
+            </div>
           </div>
           {splitList(val("genres")).length > 8 && <p className="mt-2 text-[12px] text-white/50">Keep genres to the few that fit best.</p>}
           <datalist id="new-country">{SUGGEST.country.map((x) => <option key={x} value={x} />)}</datalist>
