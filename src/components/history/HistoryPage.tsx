@@ -46,7 +46,7 @@ function Card({ it, me }: { it: HistoryItem; me?: string }) {
     <article className="rounded-[6px] border border-white/15 bg-[#141415] px-[18px] py-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px]">
-          {it.who ? <><span className="font-bold"><Name p={it.who} you={me} /></span><span className="text-[11px] text-white/50">{roleLabel(it.who).replace("Editor", "editor").replace("Contributor", "contributor")}</span></>
+          {it.who ? <><span className="font-bold"><Name p={it.who} /></span><span className="text-[11px] text-white/50">{roleLabel(it.who).replace("Editor", "editor").replace("Contributor", "contributor")}</span></>
             : <><span className="font-bold"><MusicBrainz /></span><span className="text-[11px] text-white/50">Catalog sync</span></>}
           <span className="text-white/85">{it.verb}</span>
         </p>
@@ -55,7 +55,7 @@ function Card({ it, me }: { it: HistoryItem; me?: string }) {
       {it.rows.length > 0 && <div className="mt-3.5 flex flex-col gap-2.5">{it.rows.map((c, i) => <Change key={i} c={c} />)}</div>}
       {it.lines.length > 0 && (
         <p className="mt-3 text-[13px] text-white/60">
-          {it.lines.map((l, i) => <span key={i}>{i > 0 && " · "}{l.text} {l.who && <Name p={l.who} you={me} />}</span>)}
+          {it.lines.map((l, i) => <span key={i}>{i > 0 && " · "}{l.text} {l.who && <Name p={l.who} />}</span>)}
         </p>
       )}
       {it.number && <Link href={`/submission/${it.number}`} className="mt-3 inline-block text-[13px] hover:underline">View submission #{it.number}</Link>}
@@ -127,7 +127,7 @@ export default async function HistoryPage({ kind, slug, id, tag, title, sub, cov
             <ul className="mt-2 flex flex-col">
               {[...people.entries()].map(([k, e]) => (
                 <li key={k} className="flex items-baseline justify-between gap-3 py-2 text-[14px]">
-                  {e.p ? <Name p={e.p} you={v?.username} /> : <MusicBrainz />}
+                  {e.p ? <Name p={e.p} /> : <MusicBrainz />}
                   <span className="text-[12px] text-white/60">{what(e)}</span>
                 </li>
               ))}

@@ -95,19 +95,30 @@ async function pendingHits(sql: NonNullable<ReturnType<typeof db>>, q: string, l
 const kindOrder: Record<Kind, number> = { artist: 0, release: 1, song: 2 };
 const byScore = (a: Hit, b: Hit) => a.score - b.score || kindOrder[a.kind] - kindOrder[b.kind] || b.weight - a.weight || a.title.length - b.title.length;
 
+/** Searches shorter than 3 letters would scan the whole catalog; the results page asks for more. */
+export function searchTooShort(raw: string) {
+  return likePattern(raw.trim().toLowerCase()).words.join("").length < 3;
+}
+
+/** The database gave up (statement timeout): the page says so instead of breaking. */
+export class SearchTooSlow extends Error {}
+
 /** The full search behind the results page. */
 export async function searchCatalog(raw: string, filter: SearchFilter = "all", limit = 40): Promise<Hit[] | null> {
   const sql = db();
   if (!sql) return null;
   const q = raw.trim().toLowerCase();
   const { pattern } = likePattern(q);
-  if (!pattern) return [];
+  if (!pattern || searchTooShort(q)) return [];
   const kindOf: Record<Exclude<SearchFilter, "all">, Kind> = { artists: "artist", releases: "release", songs: "song" };
   const kinds: Kind[] = filter === "all" ? ["artist", "release", "song"] : [kindOf[filter]];
   const [rows, pending] = await Promise.all([
     sql<DbHit[]>`select * from public.search_catalog(${raw}, ${`{${kinds.join(",")}}`}::text[], ${limit})`,
     pendingHits(sql, q, `%${pattern}%`, 20),
-  ]);
+  ]).catch((e: { code?: string }) => {
+    if (e?.code === "57014") throw new SearchTooSlow();
+    throw e;
+  });
   return [...rows.map(toHit), ...pending.filter((p) => kinds.includes(p.kind))].sort(byScore).slice(0, limit);
 }
 
@@ -216,7 +227,10 @@ export const getArtist = cache(async (slug: string): Promise<Artist | null | und
              (select count(*) from public.tracks t where t.release_id = r.id)::int as tracks
         from public.releases r
        where r.has_page and r.edition_of is null
-         and (r.artist_id = ${a.id} or exists (select 1 from public.artist_credits c where c.release_id = r.id and c.artist_id = ${a.id}))
+         -- Two indexed lookups (their own releases, and ones they're credited on). An "or" here
+         -- read all 5 million releases: about 2 seconds per artist page and search preview.
+         and r.id in (select x.id from public.releases x where x.artist_id = ${a.id}
+                      union select c.release_id from public.artist_credits c where c.artist_id = ${a.id} and c.release_id is not null)
        order by r.year desc nulls last, r.title`,
     historyFor("artist", a.id),
   ]);

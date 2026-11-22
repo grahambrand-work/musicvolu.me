@@ -197,7 +197,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
 
           {s.status === "published" && (
             <p className="mt-10 border-t border-rule pt-6 text-[15px] text-[#7ad98f]">
-              Published{last ? <> by <Name p={last} you={v.username} /></> : null}.{" "}
+              Published{last ? <> by <Name p={last} /></> : null}.{" "}
               {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
             </p>
           )}
@@ -222,10 +222,10 @@ function Linkify({ text }: { text: string }) {
 }
 
 function StatusText({ s, last, me, reviewer }: { s: Submission; last: Person | null; me: string; reviewer: Person | null }) {
-  const extra = s.status === "in_review" && reviewer ? <> · picked up by <Name p={reviewer} you={me} /></>
-    : s.status === "final_review" && last ? <> · sent by <Name p={last} you={me} /></>
-    : s.status === "changes_requested" && last ? <> · asked by <Name p={last} you={me} /></>
-    : (s.status === "published" || s.status === "rejected") && last ? <> by <Name p={last} you={me} /></> : null;
+  const extra = s.status === "in_review" && reviewer ? <> · picked up by <Name p={reviewer} /></>
+    : s.status === "final_review" && last ? <> · sent by <Name p={last} /></>
+    : s.status === "changes_requested" && last ? <> · asked by <Name p={last} /></>
+    : (s.status === "published" || s.status === "rejected") && last ? <> by <Name p={last} /></> : null;
   const color = { in_review: "text-teal", final_review: "text-[#fa99cc]", changes_requested: "text-[#f5b84d]", published: "text-[#7ad98f]", rejected: "text-[#ff8a80]" }[s.status] ?? "text-white/75";
   return <span className={`inline-flex items-center gap-1.5 ${color}`}><Dot status={s.status as never} />{STATUS_LABEL[s.status] ?? s.status}{extra}</span>;
 }

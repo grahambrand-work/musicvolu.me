@@ -169,10 +169,10 @@ function Allowance({ used, limit, published, m, next }: { used: number; limit: n
 function Row({ r, me, owner, reviews }: { r: ContribRow; me?: string; owner: Person; reviews: boolean }) {
   const c = STATUS_COLOR[r.status] ?? "#808080";
   const hollow = r.status === "needs_review";
-  const by = r.by ? <Name p={r.by} you={me} /> : null;
+  const by = r.by ? <Name p={r.by} /> : null;
   const line = reviews ? <>Last move: {r.move}</>
     : r.status === "in_review" && by ? <>Picked up by {by}</>
-    : r.status === "changes_requested" ? <>Waiting on <Name p={owner} you={me} /></>
+    : r.status === "changes_requested" ? <>Waiting on <Name p={owner} /></>
     : r.status === "final_review" && by ? <>Sent by {by}</>
     : r.status === "published" && by ? <>Published by {by}</>
     : r.status === "rejected" && by ? <>Rejected by {by}</>

@@ -52,7 +52,7 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
   const rows = await getActivity(v, f);
   const trails = all ? await getTrails([...new Set(rows.flatMap((r) => (r.submission ? [r.submission.id] : [])))]) : new Map();
   const qs = (extra: Record<string, string>) => new URLSearchParams(Object.entries({ ...sp, ...extra }).filter(([, x]) => typeof x === "string") as [string, string][]).toString();
-  const select = "h-9 rounded-full border border-white/50 bg-black px-3.5 text-[13px] hover:border-white";
+  const select = "pill-select h-9 rounded-full border border-white/50 bg-black pl-3.5 text-[13px] hover:border-white";
 
   return (
     <>
@@ -96,7 +96,7 @@ function Row({ r, trail, me }: { r: LogRow; trail?: { when: Date; who: import("@
   const body = (
     <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 py-3 text-[14px] md:grid-cols-[90px_150px_190px_minmax(0,1fr)_110px_minmax(0,1fr)_140px] md:items-baseline md:gap-4">
       <span className="text-[13px] text-white/60 max-md:order-2 max-md:text-right">{when(r.when)}</span>
-      <span className="max-md:order-1">{r.who ? <Name p={r.who} you={me} /> : <MusicBrainz />} <span className="text-white/80 md:hidden">{r.action}</span></span>
+      <span className="max-md:order-1">{r.who ? <Name p={r.who} /> : <MusicBrainz />} <span className="text-white/80 md:hidden">{r.action}</span></span>
       <span className="text-white/85 max-md:hidden">{r.action}</span>
       <span className="flex min-w-0 items-baseline gap-2 max-md:order-3 max-md:col-span-2">
         <Tag>{TAG[r.entityType]}</Tag>
@@ -118,7 +118,7 @@ function Row({ r, trail, me }: { r: LogRow; trail?: { when: Date; who: import("@
             {trail.map((t, i) => (
               <li key={i} className="grid grid-cols-[130px_1fr] gap-3 text-[13px] md:grid-cols-[170px_1fr]">
                 <span className="text-white/55">{t.when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })}</span>
-                <span>{t.who ? <Name p={t.who} you={me} /> : "system"} <span className="text-white/80">{t.text}</span></span>
+                <span>{t.who ? <Name p={t.who} /> : "system"} <span className="text-white/80">{t.text}</span></span>
               </li>
             ))}
           </ol>
