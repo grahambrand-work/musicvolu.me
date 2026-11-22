@@ -2,6 +2,7 @@
 // Edit mode for an artist, release or song (Figma "Album · Melodrama · edit", "Artist · Lorde ·
 // edit", "Song · Royals · edit" and the phone version). Changed fields get a teal outline and a
 // "Was:" line; the "Your changes" panel lists every change and sends them for review together.
+import GenreTags from "./GenreTags";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { reviseEdit, submitEdit, type SubmitResult } from "@/app/edit-actions";
@@ -160,6 +161,9 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
                       ) : f.type === "image" ? (
                         <CoverLink id={id} value={raw === was ? "" : raw} onChange={(x) => set(f.key, x.trim() ? x : was)}
                           placeholder={f.placeholder} className={`${box} ${boxH} w-full ${border(changed, err)}`} autoFocus={focus === f.key} invalid={!!err} />
+                      ) : f.key === "genres" ? (
+                        <GenreTags id={id} value={raw} onChange={(v) => set(f.key, v)} className={`${box} ${border(changed, err)}`}
+                          invalid={!!err} autoFocus={focus === f.key} />
                       ) : f.type === "readonly" ? (
                         <div id={id} className={`${box} ${boxH} flex w-full items-center border-white/12 text-white/50`} title="Worked out from its releases">{raw || "—"}</div>
                       ) : (
