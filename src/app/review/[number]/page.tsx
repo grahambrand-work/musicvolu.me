@@ -184,6 +184,13 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
             {!byField(null).length && !can.comment(v) && <p className="text-[14px] text-white/50">No comments yet.</p>}
           </Block>
 
+          {s.status === "published" && (
+            <p className="mt-10 border-t border-rule pt-6 text-[15px] text-[#7ad98f]">
+              Published{last ? <> by <Name p={last} /></> : null}.{" "}
+              {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
+            </p>
+          )}
+          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && (s.entityType === "release" || s.entityType === "artist")} /></div>}
           <Block title="Activity">
             <ul className="flex flex-col">
               {activity(s, comments).map((e, i) => (
@@ -195,13 +202,6 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
             </ul>
           </Block>
 
-          {s.status === "published" && (
-            <p className="mt-10 border-t border-rule pt-6 text-[15px] text-[#7ad98f]">
-              Published{last ? <> by <Name p={last} /></> : null}.{" "}
-              {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
-            </p>
-          )}
-          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && (s.entityType === "release" || s.entityType === "artist")} /></div>}
         </main>
       </div>
     </>
