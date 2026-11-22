@@ -1,4 +1,4 @@
-// Top bar. Desktop: logo, Contribute, search, then Review board (+ Final review) + your name + tier badge (or Log in /
+// Top bar. Desktop: logo, search, Contribute, then Review board (+ Final review) + your name + tier badge (or Log in /
 // Create account when signed out). Phone: logo, then search, add and menu icons.
 // On Home the bar has no search box, sits on the video, and (signed in) has the ☰ menu on desktop too.
 import Link from "next/link";
@@ -26,15 +26,15 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
       <div className={`flex items-center gap-10 px-4 md:px-[60px] ${home ? "h-[100px] pt-4 md:h-auto md:pt-[30px]" : "h-[100px] pt-[30px] md:h-[72px] md:pt-0"}`}>
         <Link href="/" aria-label="musicvolu.me home" className="shrink-0"><Logo /></Link>
 
-        {!home && !bare && viewer && (
-          <Link href="/contribute" className="hidden shrink-0 items-center gap-1.5 rounded-full border border-white py-[5px] pr-4 pl-3 text-[14px] hover:bg-white/10 md:inline-flex">
-            <PlusIcon /> Contribute
-          </Link>
-        )}
         {!home && !bare && (
           <div className="hidden w-full max-w-[520px] md:block">
             <SearchBox key={q} initial={q} />
           </div>
+        )}
+        {!home && !bare && viewer && (
+          <Link href="/contribute" className="hidden shrink-0 items-center gap-1.5 rounded-full border border-white py-[5px] pr-4 pl-3 text-[14px] hover:bg-white/10 md:inline-flex">
+            <PlusIcon /> Contribute
+          </Link>
         )}
 
         <div className="ml-auto hidden items-center gap-5 md:flex">
