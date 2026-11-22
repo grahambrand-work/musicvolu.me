@@ -7,16 +7,17 @@ import { CommentIcon } from "../icons";
 import { Cover, Tag } from "../ui";
 import Votes from "./Votes";
 
-export function Name({ p, you }: { p: Person; you?: string }) {
-  return <span className="font-mono" style={{ color: tierColor(p) }}>{you && p.username === you ? "you" : p.username}</span>;
+/** Always the username, the same for everyone (never "you"; Graham, 2026-11-21). */
+export function Name({ p }: { p: Person }) {
+  return <span className="font-mono" style={{ color: tierColor(p) }}>{p.username}</span>;
 }
 
-/** "Picked up by you", "Waiting on marlowe.k", "Sent by marco.v · waiting to publish", "Published by mbadmin". */
+/** "Picked up by marlowe.k", "Waiting on marlowe.k", "Sent by marco.v · waiting to publish", "Published by mbadmin". */
 function StatusLine({ c, me }: { c: Card; me: string }) {
-  if (c.status === "in_review" && c.reviewer) return <p className="text-[12px] text-teal">Picked up by <Name p={c.reviewer} you={me} /></p>;
-  if (c.status === "changes_requested") return <p className="text-[12px] text-[#f5b84d]">Waiting on <Name p={c.author} you={me} /></p>;
-  if (c.status === "final_review") return <p className="text-[12px] text-white/60">Sent by {c.movedBy ? <Name p={c.movedBy} you={me} /> : "an editor"} · waiting to publish</p>;
-  if (c.status === "published") return <p className="text-[12px] text-white/60">Published by {c.movedBy ? <Name p={c.movedBy} you={me} /> : "an admin"}</p>;
+  if (c.status === "in_review" && c.reviewer) return <p className="text-[12px] text-teal">Picked up by <Name p={c.reviewer} /></p>;
+  if (c.status === "changes_requested") return <p className="text-[12px] text-[#f5b84d]">Waiting on <Name p={c.author} /></p>;
+  if (c.status === "final_review") return <p className="text-[12px] text-white/60">Sent by {c.movedBy ? <Name p={c.movedBy} /> : "an editor"} · waiting to publish</p>;
+  if (c.status === "published") return <p className="text-[12px] text-white/60">Published by {c.movedBy ? <Name p={c.movedBy} /> : "an admin"}</p>;
   return null;
 }
 

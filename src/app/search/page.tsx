@@ -5,7 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import SearchBox from "@/components/SearchBox";
 import { Cover, NoDatabase, Tag } from "@/components/ui";
-import { searchCatalog, type Hit, type SearchFilter } from "@/lib/catalog";
+import { searchCatalog, searchTooShort, SearchTooSlow, type Hit, type SearchFilter } from "@/lib/catalog";
 import { hitHref } from "@/lib/links";
 import Preview from "./Preview";
 import PhoneSheet from "./PhoneSheet";
@@ -24,7 +24,13 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   const q = String(sp.q ?? "").trim();
   const filter = (FILTERS.find((f) => f.key === sp.type)?.key ?? "all") as SearchFilter;
   const open = typeof sp.open === "string" ? sp.open : null;
-  const hits = q ? await searchCatalog(q, filter) : [];
+  const short = !!q && searchTooShort(q);
+  let slow = false;
+  let hits: Hit[] | null = [];
+  if (q && !short) {
+    try { hits = await searchCatalog(q, filter); }
+    catch (e) { if (e instanceof SearchTooSlow) slow = true; else throw e; }
+  }
 
   // Links back to this page: the selected entry ("open") is only kept when asked for.
   const qs = ({ type = filter, open = null }: { type?: SearchFilter; open?: string | null }) => {
@@ -65,7 +71,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
               </nav>
             )}
             {!q && <p className="px-4 py-10 text-[14px] text-white/60 md:px-3">Search for an artist, album or song.</p>}
-            {q && hits.length === 0 && (
+            {short && <p className="px-4 py-10 text-[14px] text-white/60 md:px-3">Type at least 3 letters to search.</p>}
+            {slow && (
+              <div className="px-4 py-10 md:px-3">
+                <p className="text-[15px]">That search took too long.</p>
+                <p className="mt-1 text-[14px] text-white/60">Try more words, like the artist and the title together.</p>
+              </div>
+            )}
+            {q && !short && !slow && hits.length === 0 && (
               <div className="px-4 py-10 md:px-3">
                 <p className="text-[15px]">Nothing found for “{q}”.</p>
                 <p className="mt-1 text-[14px] text-white/60">Check the spelling, or <Link href="/contribute" className="underline">add it to musicvolu.me</Link>.</p>
