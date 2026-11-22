@@ -79,7 +79,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
             })}
           </nav>
           <ul className="mt-5 -mx-3.5">
-            {cards.length ? cards.map((c) => <QueueRow key={c.id} c={c} selected={c.id === s.id} />) : <li className="px-3.5 py-4 text-[14px] text-white/50">Nothing in this queue.</li>}
+            {cards.length ? cards.map((c) => <QueueRow key={c.id} c={c} me={v.username} selected={c.id === s.id} />) : <li className="px-3.5 py-4 text-[14px] text-white/50">Nothing in this queue.</li>}
           </ul>
         </aside>
 
@@ -91,7 +91,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
               <p className="flex flex-wrap items-center gap-2.5 text-[13px]">
                 <Tag>{tag}</Tag>
                 <span className="text-white/70">{s.kind === "edit" ? "Edit" : "New"}</span>
-                <StatusText s={s} last={last} me={v.username} reviewer={self?.reviewer ?? null} />
+                <StatusText s={s} last={last} reviewer={self?.reviewer ?? null} />
               </p>
               <h2 className="mt-1.5 font-mono text-[26px] leading-[1.15] font-bold break-words md:text-[30px]">
                 {s.entitySlug ? <Link href={`/${s.entityType}/${s.entitySlug}`} className="hover:underline">{s.entityName}</Link> : s.entityName}
@@ -197,7 +197,7 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
 
           {s.status === "published" && (
             <p className="mt-10 border-t border-rule pt-6 text-[15px] text-[#7ad98f]">
-              Published{last ? <> by <Name p={last} you={v.username} /></> : null}.{" "}
+              Published{last ? <> by <Name p={last} /></> : null}.{" "}
               {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
             </p>
           )}
@@ -221,11 +221,11 @@ function Linkify({ text }: { text: string }) {
   return <>{text.split(/(https?:\/\/[^\s]+)/g).map((p, i) => (/^https?:\/\//.test(p) ? <a key={i} href={p} target="_blank" rel="noreferrer noopener" className="underline">{p}</a> : p))}</>;
 }
 
-function StatusText({ s, last, me, reviewer }: { s: Submission; last: Person | null; me: string; reviewer: Person | null }) {
-  const extra = s.status === "in_review" && reviewer ? <> · picked up by <Name p={reviewer} you={me} /></>
-    : s.status === "final_review" && last ? <> · sent by <Name p={last} you={me} /></>
-    : s.status === "changes_requested" && last ? <> · asked by <Name p={last} you={me} /></>
-    : (s.status === "published" || s.status === "rejected") && last ? <> by <Name p={last} you={me} /></> : null;
+function StatusText({ s, last, reviewer }: { s: Submission; last: Person | null; reviewer: Person | null }) {
+  const extra = s.status === "in_review" && reviewer ? <> · picked up by <Name p={reviewer} /></>
+    : s.status === "final_review" && last ? <> · sent by <Name p={last} /></>
+    : s.status === "changes_requested" && last ? <> · asked by <Name p={last} /></>
+    : (s.status === "published" || s.status === "rejected") && last ? <> by <Name p={last} /></> : null;
   const color = { in_review: "text-teal", final_review: "text-[#fa99cc]", changes_requested: "text-[#f5b84d]", published: "text-[#7ad98f]", rejected: "text-[#ff8a80]" }[s.status] ?? "text-white/75";
   return <span className={`inline-flex items-center gap-1.5 ${color}`}><Dot status={s.status as never} />{STATUS_LABEL[s.status] ?? s.status}{extra}</span>;
 }

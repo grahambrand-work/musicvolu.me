@@ -10,7 +10,7 @@ import {
   type Change, type CreditRow, type Kind, type ReleaseValues, type SongValues, type TrackRow, type Values,
 } from "@/lib/edits";
 import { parseTracklist } from "@/lib/newEntry";
-import { PlusIcon } from "./icons";
+import { ChevronDown, PlusIcon } from "./icons";
 import CoverLink from "./CoverLink";
 import { Cover, Tag } from "./ui";
 
@@ -229,16 +229,8 @@ export function Select({ id, value, onChange, options, className, autoFocus }: {
         {!options.some((o) => o.value === value) && <option value={value}>{value || "Choose…"}</option>}
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      <Chevron className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" />
+      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" />
     </div>
-  );
-}
-
-function Chevron({ className }: { className?: string }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden className={className}>
-      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

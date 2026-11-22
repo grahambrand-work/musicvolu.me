@@ -103,7 +103,7 @@ export default async function ContributionsPage({ params, searchParams }: PagePr
           {groups.map(([title, list]) => (
             <section key={title} className="mb-2">
               <h2 className="field-label mt-6 mb-1 text-white/55 first:mt-0">{title}</h2>
-              <ul>{list.map((r) => <Row key={`${r.number}`} r={r} me={own ? v.username : undefined} owner={m} reviews={f === "reviews"} />)}</ul>
+              <ul>{list.map((r) => <Row key={`${r.number}`} r={r} owner={m} reviews={f === "reviews"} />)}</ul>
             </section>
           ))}
           {rows.length === 0 && (
@@ -166,13 +166,13 @@ function Allowance({ used, limit, published, m, next }: { used: number; limit: n
   );
 }
 
-function Row({ r, me, owner, reviews }: { r: ContribRow; me?: string; owner: Person; reviews: boolean }) {
+function Row({ r, owner, reviews }: { r: ContribRow; owner: Person; reviews: boolean }) {
   const c = STATUS_COLOR[r.status] ?? "#808080";
   const hollow = r.status === "needs_review";
-  const by = r.by ? <Name p={r.by} you={me} /> : null;
+  const by = r.by ? <Name p={r.by} /> : null;
   const line = reviews ? <>Last move: {r.move}</>
     : r.status === "in_review" && by ? <>Picked up by {by}</>
-    : r.status === "changes_requested" ? <>Waiting on <Name p={owner} you={me} /></>
+    : r.status === "changes_requested" ? <>Waiting on <Name p={owner} /></>
     : r.status === "final_review" && by ? <>Sent by {by}</>
     : r.status === "published" && by ? <>Published by {by}</>
     : r.status === "rejected" && by ? <>Rejected by {by}</>

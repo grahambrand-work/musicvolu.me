@@ -7,6 +7,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import { Change, MusicBrainz } from "@/components/history/HistoryPage";
 import { Name } from "@/components/review/ReviewCard";
+import { ChevronDown } from "@/components/icons";
 import { Tag } from "@/components/ui";
 import type { Kind } from "@/lib/edits";
 import { getActivity, getTrails, LOG_ACTIONS, seesAll, type LogFilter, type LogRow } from "@/lib/history";
@@ -52,7 +53,6 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
   const rows = await getActivity(v, f);
   const trails = all ? await getTrails([...new Set(rows.flatMap((r) => (r.submission ? [r.submission.id] : [])))]) : new Map();
   const qs = (extra: Record<string, string>) => new URLSearchParams(Object.entries({ ...sp, ...extra }).filter(([, x]) => typeof x === "string") as [string, string][]).toString();
-  const select = "h-9 rounded-full border border-white/50 bg-black px-3.5 text-[13px] hover:border-white";
 
   return (
     <>
@@ -67,9 +67,9 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
         {all && (
           <form method="get" className="mt-6 flex flex-wrap items-center gap-2.5">
             <input name="q" defaultValue={f.q} placeholder="Filter by person or entry…" className="h-9 w-full rounded-full bg-white px-4 text-[14px] text-black outline-none placeholder:text-black/40 md:w-[310px]" />
-            <select name="action" defaultValue={f.action} className={select}>{LOG_ACTIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
-            <select name="type" defaultValue={f.type} className={select}>{TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}</select>
-            <select name="range" defaultValue={f.range} className={select}>{RANGES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select>
+            <FilterSelect name="action" value={f.action} options={LOG_ACTIONS} />
+            <FilterSelect name="type" value={f.type} options={TYPES} />
+            <FilterSelect name="range" value={f.range} options={RANGES} />
             <button type="submit" className="h-9 rounded-full bg-white px-4 text-[13px] font-medium text-black hover:bg-white/85">Filter</button>
             {(f.q || f.action !== "all" || f.type !== "all" || f.range !== "7d") && <Link href="/activity" className="text-[13px] text-white/70 hover:text-white">Clear</Link>}
           </form>
@@ -80,7 +80,7 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
             {["When", "Who", "Action", "Entry", "Field", "Change", "Status"].map((h) => <span key={h} className="field-label">{h}</span>)}
           </div>
           <ul>
-            {rows.map((r) => <Row key={r.key} r={r} trail={r.submission ? trails.get(r.submission.id) : undefined} me={v?.username} />)}
+            {rows.map((r) => <Row key={r.key} r={r} trail={r.submission ? trails.get(r.submission.id) : undefined} />)}
           </ul>
           {rows.length === 0 && <p className="py-8 text-white/60">Nothing here yet{all ? " with these filters" : ""}.</p>}
           {rows.length >= (f.limit ?? 50) && f.limit! < 1000 && (
@@ -92,11 +92,11 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
   );
 }
 
-function Row({ r, trail, me }: { r: LogRow; trail?: { when: Date; who: import("@/lib/review").Person | null; text: string }[]; me?: string }) {
+function Row({ r, trail }: { r: LogRow; trail?: { when: Date; who: import("@/lib/review").Person | null; text: string }[] }) {
   const body = (
     <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 py-3 text-[14px] md:grid-cols-[90px_150px_190px_minmax(0,1fr)_110px_minmax(0,1fr)_140px] md:items-baseline md:gap-4">
       <span className="text-[13px] text-white/60 max-md:order-2 max-md:text-right">{when(r.when)}</span>
-      <span className="max-md:order-1">{r.who ? <Name p={r.who} you={me} /> : <MusicBrainz />} <span className="text-white/80 md:hidden">{r.action}</span></span>
+      <span className="max-md:order-1">{r.who ? <Name p={r.who} /> : <MusicBrainz />} <span className="text-white/80 md:hidden">{r.action}</span></span>
       <span className="text-white/85 max-md:hidden">{r.action}</span>
       <span className="flex min-w-0 items-baseline gap-2 max-md:order-3 max-md:col-span-2">
         <Tag>{TAG[r.entityType]}</Tag>
@@ -118,7 +118,7 @@ function Row({ r, trail, me }: { r: LogRow; trail?: { when: Date; who: import("@
             {trail.map((t, i) => (
               <li key={i} className="grid grid-cols-[130px_1fr] gap-3 text-[13px] md:grid-cols-[170px_1fr]">
                 <span className="text-white/55">{t.when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })}</span>
-                <span>{t.who ? <Name p={t.who} you={me} /> : "system"} <span className="text-white/80">{t.text}</span></span>
+                <span>{t.who ? <Name p={t.who} /> : "system"} <span className="text-white/80">{t.text}</span></span>
               </li>
             ))}
           </ol>
@@ -126,5 +126,17 @@ function Row({ r, trail, me }: { r: LogRow; trail?: { when: Date; who: import("@
         </div>
       </details>
     </li>
+  );
+}
+
+/** A filter dropdown: our own arrow, kept the same 14 px in from the edge as the text is on the left. */
+function FilterSelect({ name, value, options }: { name: string; value?: string; options: readonly { key: string; label: string }[] }) {
+  return (
+    <span className="relative inline-flex">
+      <select name={name} defaultValue={value} className="h-9 appearance-none rounded-full border border-white/50 bg-black pr-9 pl-3.5 text-[13px] hover:border-white">
+        {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2" />
+    </span>
   );
 }

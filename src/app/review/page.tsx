@@ -81,7 +81,7 @@ export default async function ReviewBoard({ searchParams }: PageProps<"/review">
                 {byStage(stage).map((c) => <BoardCard key={c.id} c={c} me={v.username} canVote={canVote} />)}
               </div>
               <ul className="mt-5 hidden max-w-[760px] md:block">
-                {byStage(stage).map((c) => <QueueRow key={c.id} c={c} selected={false} />)}
+                {byStage(stage).map((c) => <QueueRow key={c.id} c={c} me={v.username} selected={false} />)}
               </ul>
             </>
           )}

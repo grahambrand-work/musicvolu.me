@@ -7,20 +7,21 @@ import { CommentIcon } from "../icons";
 import { Cover, Tag } from "../ui";
 import Votes from "./Votes";
 
-export function Name({ p, you }: { p: Person; you?: string }) {
-  return <span className="font-mono" style={{ color: tierColor(p) }}>{you && p.username === you ? "you" : p.username}</span>;
+/** A member's username in their tier colour. Always the real name, never "you" (Graham, 2026-11-22). */
+export function Name({ p }: { p: Person }) {
+  return <span className="font-mono" style={{ color: tierColor(p) }}>{p.username}</span>;
 }
 
-/** "Picked up by you", "Waiting on marlowe.k", "Sent by marco.v · waiting to publish", "Published by mbadmin". */
-function StatusLine({ c, me }: { c: Card; me: string }) {
-  if (c.status === "in_review" && c.reviewer) return <p className="text-[12px] text-teal">Picked up by <Name p={c.reviewer} you={me} /></p>;
-  if (c.status === "changes_requested") return <p className="text-[12px] text-[#f5b84d]">Waiting on <Name p={c.author} you={me} /></p>;
-  if (c.status === "final_review") return <p className="text-[12px] text-white/60">Sent by {c.movedBy ? <Name p={c.movedBy} you={me} /> : "an editor"} · waiting to publish</p>;
-  if (c.status === "published") return <p className="text-[12px] text-white/60">Published by {c.movedBy ? <Name p={c.movedBy} you={me} /> : "an admin"}</p>;
+/** "Picked up by juno.edits", "Waiting on marlowe.k", "Sent by marco.v · waiting to publish", "Published by mbadmin". */
+function StatusLine({ c }: { c: Card }) {
+  if (c.status === "in_review" && c.reviewer) return <p className="text-[12px] text-teal">Picked up by <Name p={c.reviewer} /></p>;
+  if (c.status === "changes_requested") return <p className="text-[12px] text-[#f5b84d]">Waiting on <Name p={c.author} /></p>;
+  if (c.status === "final_review") return <p className="text-[12px] text-white/60">Sent by {c.movedBy ? <Name p={c.movedBy} /> : "an editor"} · waiting to publish</p>;
+  if (c.status === "published") return <p className="text-[12px] text-white/60">Published by {c.movedBy ? <Name p={c.movedBy} /> : "an admin"}</p>;
   return null;
 }
 
-const YouChip = () => <span className="rounded-[3px] bg-teal/15 px-1.5 py-0.5 text-[11px] text-teal">@ you</span>;
+const MentionChip = ({ me }: { me: string }) => <span className="rounded-[3px] bg-teal/15 px-1.5 py-0.5 text-[11px] text-teal">@ {me}</span>;
 
 export function BoardCard({ c, me, canVote, selected = false }: { c: Card; me: string; canVote: boolean; selected?: boolean }) {
   return (
@@ -34,9 +35,9 @@ export function BoardCard({ c, me, canVote, selected = false }: { c: Card; me: s
       <h3 className="mt-2.5 truncate font-mono text-[15px] font-bold">{c.entityName}</h3>
       <p className="mt-1 truncate text-[13px] text-white/65">{c.summary}</p>
       <p className="mt-2 truncate text-[13px] text-white/65">by <Name p={c.author} /></p>
-      <div className="mt-2"><StatusLine c={c} me={me} /></div>
+      <div className="mt-2"><StatusLine c={c} /></div>
       <div className="relative z-10 mt-2.5 flex items-center gap-3 pointer-events-none [&_button]:pointer-events-auto">
-        {c.mentionsMe && <YouChip />}
+        {c.mentionsMe && <MentionChip me={me} />}
         <Votes target="submission" id={c.id} up={c.up} down={c.down} mine={c.myVote} canVote={canVote} />
         {c.comments > 0 && <span className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-white/70"><CommentIcon size={13} />{c.comments}</span>}
       </div>
@@ -44,7 +45,7 @@ export function BoardCard({ c, me, canVote, selected = false }: { c: Card; me: s
   );
 }
 
-export function QueueRow({ c, selected }: { c: Card; selected: boolean }) {
+export function QueueRow({ c, me, selected }: { c: Card; me: string; selected: boolean }) {
   const color = STATUS_COLOR[c.status];
   return (
     <li className={`relative border-b border-hair px-3.5 py-3.5 ${selected ? "rounded-[6px] bg-white/7" : "hover:bg-white/4"}`}>
@@ -61,7 +62,7 @@ export function QueueRow({ c, selected }: { c: Card; selected: boolean }) {
       <div className="mt-1.5 flex items-center gap-2 text-[12px]">
         <span className="size-1.5 rounded-full border" style={{ background: color, borderColor: color === "transparent" ? "rgb(255 255 255 / .6)" : color }} />
         <span style={{ color: color === "transparent" ? undefined : color }}>{STATUS_LABEL[c.status]}</span>
-        {c.mentionsMe && <YouChip />}
+        {c.mentionsMe && <MentionChip me={me} />}
         <span className="ml-auto text-white/70"><Votes target="submission" id={c.id} up={c.up} down={c.down} mine={c.myVote} canVote={false} /></span>
       </div>
     </li>
