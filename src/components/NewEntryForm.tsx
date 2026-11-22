@@ -45,7 +45,7 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
 
   // Step list: done when the required bits of that section are filled in.
   const steps: { id: string; label: string; done: boolean }[] = kind === "artist"
-    ? [{ id: "s-details", label: "Details", done: !!a.name }, { id: "s-sources", label: "Sources", done: !!a.sources.trim() }]
+    ? [{ id: "s-details", label: "Details", done: !!a.name }, { id: "s-sources", label: "Photo & sources", done: !!a.sources.trim() }]
     : [
       { id: "s-artist", label: kind === "release" ? "Type & artist" : "Artist", done: artists.length > 0 },
       { id: "s-details", label: "Details", done: !!title },
@@ -208,12 +208,12 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
           </Section>
         )}
 
-        <Section n={kind === "artist" ? 2 : 4} id="s-sources" title={kind === "release" ? "Cover art & sources" : "Sources"}>
-          {kind === "release" && (
+        <Section n={kind === "artist" ? 2 : 4} id="s-sources" title={kind === "release" ? "Cover art & sources" : kind === "artist" ? "Photo & sources" : "Sources"}>
+          {(kind === "release" || kind === "artist") && (
             <div className="mb-6">
-              <label htmlFor="new-cover" className="field-label block pb-2 text-white/80">Cover <span className="ml-1 text-[11px] normal-case tracking-normal text-white/45">Optional</span></label>
+              <label htmlFor="new-cover" className="field-label block pb-2 text-white/80">{kind === "artist" ? "Photo" : "Cover"} <span className="ml-1 text-[11px] normal-case tracking-normal text-white/45">Optional</span></label>
               <CoverLink id="new-cover" value={val("cover")} onChange={(x) => set("cover", x)} invalid={!!f.cover}
-                placeholder="Link to the cover image (https://…)" emptyHint="You can also add one later."
+                placeholder={kind === "artist" ? "Link to a photo of the artist (https://…)" : "Link to the cover image (https://…)"} emptyHint="You can also add one later."
                 className={`h-10 w-full rounded-[4px] border bg-[#0b0b0c] px-3 text-[14px] outline-none placeholder:text-white/35 focus:border-white/80 ${f.cover ? "border-[#eb544d]" : "border-white/30"}`} />
               {f.cover && <span role="alert" className="mt-1 block text-[12px] text-[#ff8a80]">{f.cover}</span>}
             </div>

@@ -41,6 +41,7 @@ export async function getEditable(kind: Kind, slug: string): Promise<Editable | 
       name: a.name, note: a.disambiguation ?? "", legalName: a.legalName ?? "",
       kind: a.kind === "Band" ? "Band" : "Solo artist", born: a.born ?? "", origin: a.origin ?? "", years: a.years ?? "",
       genres: a.genres.join(", "), aliases: a.aliases.join(", "), website: a.website ?? "",
+      cover: a.image ?? "",
     };
     return { id: a.id, slug: a.slug, name: a.name, cover: a.image, values, fixed: {}, counts: { releases: a.releases.length } };
   }
