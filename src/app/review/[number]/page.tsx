@@ -184,6 +184,8 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
             {!byField(null).length && !can.comment(v) && <p className="text-[14px] text-white/50">No comments yet.</p>}
           </Block>
 
+          {/* Decision buttons above the history (Graham, 2026-11-22). */}
+          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && (s.entityType === "release" || s.entityType === "artist")} /></div>}
           <Block title="Activity">
             <ul className="flex flex-col">
               {activity(s, comments).map((e, i) => (
@@ -201,7 +203,6 @@ export default async function OpenedCard({ params, searchParams }: PageProps<"/r
               {s.entitySlug && <Link href={`/${s.entityType}/${s.entitySlug}`} className="underline">See it live</Link>}
             </p>
           )}
-          {decide && <div className="mt-10"><Decide number={s.number} {...decide} cover={"cover" in s.changes && (s.entityType === "release" || s.entityType === "artist")} /></div>}
         </main>
       </div>
     </>

@@ -93,7 +93,7 @@ function Row({ r, limit, me }: { r: MemberRow; limit: number | null; me: string 
       {/* Desktop: one table row. */}
       <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_130px_80px_80px_90px_70px] items-center gap-4 py-3 text-[14px] md:grid">
         <span className="truncate font-bold"><Name p={r} /></span>
-        <RoleSelect memberId={r.id} value={roleKey(r)} options={ROLE_OPTIONS} disabled={r.id === me} />
+        <RoleSelect memberId={r.id} username={r.username} value={roleKey(r)} options={ROLE_OPTIONS} disabled={r.id === me} />
         <span className="text-[14px]">{used ?? <span className="text-white/40">—</span>}</span>
         <span className="text-white/85">{r.role === "admin" && !r.published ? "—" : r.published}</span>
         <span className="text-white/65">{r.role === "admin" && !r.rejected ? "—" : r.rejected}</span>
@@ -104,7 +104,7 @@ function Row({ r, limit, me }: { r: MemberRow; limit: number | null; me: string 
       <div className="py-4 md:hidden">
         <div className="flex items-center justify-between gap-3">
           <Link href={`/members/${r.username}`} className="min-w-0 truncate text-[15px] font-bold"><Name p={r} /></Link>
-          <RoleSelect memberId={r.id} value={roleKey(r)} options={ROLE_OPTIONS} disabled={r.id === me} />
+          <RoleSelect memberId={r.id} username={r.username} value={roleKey(r)} options={ROLE_OPTIONS} disabled={r.id === me} />
         </div>
         <p className="mt-1.5 text-[13px] text-white/60">
           {used && <>{used} edits this month · </>}{r.published} published · {r.rejected} rejected

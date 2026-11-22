@@ -1,28 +1,34 @@
 "use client";
-// Role dropdown on the Members page (Figma 93:1098): changes the role straight away.
+// Role dropdown on the Members page (Figma 93:1098). Picking a new role asks "are you sure?"
+// first (Graham, 2026-11-22); only "Change role" saves it.
 import { useEffect, useRef, useState, useTransition } from "react";
 import { setRole } from "@/app/members/actions";
 
 type Option = { key: string; label: string };
 
-export default function RoleSelect({ memberId, value, options, disabled = false }: { memberId: string; value: string; options: Option[]; disabled?: boolean }) {
+export default function RoleSelect({ memberId, username, value, options, disabled = false }: { memberId: string; username: string; value: string; options: Option[]; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState(value);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    if (!open && !asking) return;
+    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) { setOpen(false); setAsking(null); } };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); setAsking(null); } };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
-  }, [open]);
+  }, [open, asking]);
 
   const pick = (key: string) => {
     setOpen(false);
-    if (key === current) return;
+    setAsking(key === current ? null : key);
+  };
+
+  const save = (key: string) => {
+    setAsking(null);
     const before = current;
     setCurrent(key);
     setError(null);
@@ -52,6 +58,16 @@ export default function RoleSelect({ memberId, value, options, disabled = false 
             </li>
           ))}
         </ul>
+      )}
+      {asking && (
+        <div role="alertdialog" aria-label="Confirm role change"
+          className="absolute top-[calc(100%+6px)] right-0 z-40 w-[260px] rounded-[8px] border border-white/15 bg-[#141415] p-3.5 text-[13px] shadow-[0_12px_32px_rgb(0_0_0/.6)] md:right-auto md:left-0">
+          <p>Change <span className="font-mono">{username}</span> from {label} to {options.find((o) => o.key === asking)?.label ?? asking}?</p>
+          <div className="mt-3 flex gap-2">
+            <button type="button" autoFocus onClick={() => save(asking)} className="rounded-full bg-white px-3.5 py-1 text-black hover:bg-white/85">Change role</button>
+            <button type="button" onClick={() => setAsking(null)} className="rounded-full border border-white/40 px-3.5 py-1 hover:border-white">Cancel</button>
+          </div>
+        </div>
       )}
       {error && <p className="mt-1.5 max-w-[240px] text-[12px] text-[#eb544d]">{error}</p>}
     </div>
