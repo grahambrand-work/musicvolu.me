@@ -69,7 +69,7 @@ export type Card = {
 };
 
 const FIELD_LABEL: Record<string, string> = Object.fromEntries(
-  Object.values(FIELDS).flat().map((f) => [f.key, f.label]).concat([["tracks", "Tracklist"], ["credits", "Credits"]]),
+  Object.values(FIELDS).flat().map((f) => [f.key, f.label]).concat([["tracks", "Tracklist"], ["credits", "Credits"], ["members", "Members"]]),
 );
 export const fieldLabel = (k: string) => FIELD_LABEL[k] ?? k;
 
@@ -83,7 +83,7 @@ export function summary(r: { kind: string; entity_type: Kind; changes: Record<st
     return `New ${type}`;
   }
   const keys = Object.keys(r.changes);
-  if (keys.length === 1 && Array.isArray(r.changes[keys[0]].to) && (keys[0] === "credits" || keys[0] === "tracks")) {
+  if (keys.length === 1 && Array.isArray(r.changes[keys[0]].to) && (keys[0] === "credits" || keys[0] === "tracks" || keys[0] === "members")) {
     return `${fieldLabel(keys[0])} · ${keys.length} field`;
   }
   return `${keys.map(fieldLabel)[0] ?? "Edit"} · ${keys.length} field${keys.length === 1 ? "" : "s"}`;

@@ -8,7 +8,7 @@ import { getViewer } from "@/lib/viewer";
 import { Dot, EntryPage } from "@/components/Entry";
 import DiscographySearch from "@/components/DiscographySearch";
 import { PlusIcon } from "@/components/icons";
-import { FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
+import { Cover, FieldRows, NoDatabase, SectionLabel } from "@/components/ui";
 import { getArtist } from "@/lib/catalog";
 import { genreList, plural } from "@/lib/format";
 
@@ -65,7 +65,11 @@ export default async function ArtistPage({ params, searchParams }: PageProps<"/a
               <SectionLabel>Members · {a.members.length}</SectionLabel>
               <FieldRows rows={a.members.map((m, i) => ({
                 label: m.role || `Member ${i + 1}`,
-                value: m.slug ? <Link href={`/artist/${m.slug}`} className="hover:underline">{m.name}</Link> : m.name,
+                value: m.slug ? (
+                  <Link href={`/artist/${m.slug}`} className="inline-flex items-center gap-2 hover:underline">
+                    {m.image && <Cover src={m.image} size={22} round />}{m.name}
+                  </Link>
+                ) : m.name,
               }))} />
             </section>
           )}

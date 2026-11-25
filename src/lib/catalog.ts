@@ -151,7 +151,7 @@ export type Artist = {
   id: string; slug: string; name: string; kind: string; disambiguation: string | null;
   origin: string | null; years: string | null; image: string | null;
   legalName: string | null; aliases: string[]; genres: string[];
-  members: { name: string; role: string | null; slug: string | null }[];
+  members: { name: string; role: string | null; slug: string | null; artistId: string | null; image: string | null }[];
   releases: { slug: string; title: string; type: string; year: number | null; tracks: number; cover: string | null }[];
   born: string | null; website: string | null;
   source: Source; history: HistoryItem[]; pending: number;
@@ -219,8 +219,9 @@ export const getArtist = cache(async (slug: string): Promise<Artist | null | und
   const [aliases, genres, members, releases, hist] = await Promise.all([
     sql<{ name: string; kind: string }[]>`select name, kind from public.artist_aliases where artist_id = ${a.id} order by kind, name`,
     sql<{ name: string }[]>`select g.name from public.artist_genres ag join public.genres g on g.id = ag.genre_id where ag.artist_id = ${a.id} order by ag.position`,
-    sql<{ name: string; role: string | null; slug: string | null }[]>`
-      select m.name, m.role, x.slug from public.artist_members m left join public.artists x on x.id = m.member_artist_id
+    sql<{ name: string; role: string | null; slug: string | null; artistId: string | null; image: string | null }[]>`
+      select m.name, m.role, x.slug, x.id as "artistId", x.image_url as image
+        from public.artist_members m left join public.artists x on x.id = m.member_artist_id
        where m.band_id = ${a.id} order by m.position`,
     sql<{ slug: string; title: string; type: string; year: number | null; tracks: number; cover: string | null }[]>`
       select r.slug, r.title, r.type, r.year, coalesce(r.cover_small_url, r.cover_url) as cover,

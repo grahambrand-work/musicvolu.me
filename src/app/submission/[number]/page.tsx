@@ -164,7 +164,7 @@ function EditDetails({ s }: { s: Submission }) {
   // Rebuild before/after from the stored diff; fields not in it count as unchanged.
   const before: Record<string, unknown> = {}, after: Record<string, unknown> = {};
   for (const f of FIELDS[s.entityType]) { before[f.key] = ""; after[f.key] = ""; }
-  before.tracks = after.tracks = before.credits = after.credits = [];
+  before.tracks = after.tracks = before.credits = after.credits = before.members = after.members = [];
   for (const [k, c] of Object.entries(s.changes)) { before[k] = c.from ?? (Array.isArray(c.to) ? [] : ""); after[k] = c.to; }
   const changes = describeChanges(s.entityType, before as Values, after as Values);
   return (

@@ -3,7 +3,7 @@
 import "server-only";
 import { getArtist, getRelease, getSong } from "./catalog";
 import { db } from "./db";
-import type { ArtistValues, Kind, ReleaseValues, SongValues, Values } from "./edits";
+import type { ArtistValues, Kind, MemberRow, ReleaseValues, SongValues, Values } from "./edits";
 import { duration, isoDate } from "./format";
 import { limitFor } from "./members";
 import type { Viewer } from "./viewer";
@@ -42,6 +42,7 @@ export async function getEditable(kind: Kind, slug: string): Promise<Editable | 
       kind: a.kind === "Band" ? "Band" : "Solo artist", born: a.born ?? "", origin: a.origin ?? "", years: a.years ?? "",
       genres: a.genres.join(", "), aliases: a.aliases.join(", "), website: a.website ?? "",
       cover: a.image ?? "",
+      members: a.members.map((m) => ({ name: m.name, role: m.role ?? "", artistId: m.artistId ?? "", slug: m.slug ?? "", image: m.image ?? "" })),
     };
     return { id: a.id, slug: a.slug, name: a.name, cover: a.image, values, fixed: {}, counts: { releases: a.releases.length } };
   }
@@ -60,6 +61,24 @@ export async function getEditable(kind: Kind, slug: string): Promise<Editable | 
   };
 }
 
+/**
+ * Band members as the catalog knows them: a member linked to an artist page gets that page's
+ * name, address and photo from the database (a link to a missing page, or to the band itself,
+ * becomes a plain name).
+ */
+export async function resolveMembers(members: MemberRow[], bandId: string): Promise<MemberRow[]> {
+  const sql = db()!;
+  const ids = [...new Set(members.map((m) => m.artistId).filter((x) => /^[0-9a-f-]{36}$/i.test(x) && x !== bandId))];
+  const rows = ids.length ? await sql<{ id: string; name: string; slug: string; image_url: string | null }[]>`
+    select id, name, slug, image_url from public.artists where id = any(${ids}::uuid[])` : [];
+  const by = new Map(rows.map((r) => [r.id, r]));
+  return members.map((m) => {
+    const a = by.get(m.artistId);
+    return a ? { name: a.name, role: m.role, artistId: a.id, slug: a.slug, image: a.image_url ?? "" }
+      : { name: m.name, role: m.role, artistId: "", slug: "", image: "" };
+  });
+}
+
 export type Allowance = { limit: number | null; used: number; left: number | null };
 
 /** Edits used this calendar month (UTC). Editors and admins have no limit; tier limits are set on the Members page. */
@@ -76,13 +95,20 @@ export async function allowanceFor(v: Viewer, sql = db()!): Promise<Allowance> {
 
 export class OutOfEdits extends Error {}
 
+/** Editors and admins may send their own edits straight to final review. */
+export const canPushFinal = (v: Pick<Viewer, "role">) => v.role === "editor" || v.role === "admin";
+
 /** Saves one submission and its "submitted" log entry. Returns its number (#1042). */
 export async function saveSubmission(viewer: Viewer, input: { kind: "edit" | "new"; entityType: Kind; entityId: string | null; entityName: string;
   changes: Record<string, { from?: unknown; to: unknown }>; note: string | null;
   sources?: string | null;
   /** A new artist (still in review) this new release or song is by: that artist's submission number. */
   dependsOn?: number | null;
+  /** "Push to final review" (editors and admins, Graham 2026-11-24): skips the board and goes
+   * straight to final review, where a tier 3 editor or an admin publishes it. */
+  final?: boolean;
 }): Promise<number> {
+  const final = !!input.final && canPushFinal(viewer);
   const sql = db()!;
   return sql.begin(async (tx) => {
     // One submit at a time per member, so two quick clicks can't go over the monthly limit.
@@ -103,6 +129,17 @@ export async function saveSubmission(viewer: Viewer, input: { kind: "edit" | "ne
       returning id, number`;
     await tx`insert into musicvolume.submission_events (submission_id, member_id, action, to_status)
              values (${row.id}, ${viewer.id}, 'submitted', 'needs_review')`;
+    if (final) {
+      // The new artist it depends on (sent by the same member and still waiting) goes with it,
+      // so the release or song can be published.
+      const ids = [row.id, ...(dependsOn ? (await tx<{ id: string }[]>`
+        select id from musicvolume.submissions where id = ${dependsOn} and member_id = ${viewer.id} and status = 'needs_review'`).map((d) => d.id) : [])];
+      for (const id of ids) {
+        await tx`update musicvolume.submissions set status = 'final_review', updated_at = now() where id = ${id}`;
+        await tx`insert into musicvolume.submission_events (submission_id, member_id, action, from_status, to_status, detail)
+                 values (${id}, ${viewer.id}, 'status', 'needs_review', 'final_review', ${tx.json({ move: "push_final" })})`;
+      }
+    }
     return Number(row.number);
   });
 }
