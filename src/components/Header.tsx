@@ -23,7 +23,7 @@ export default async function Header({ home = false, bare = false, q = "" }: { h
   const review = buttons.length > 0;
   return (
     <header className={home ? "relative z-20" : `sticky top-0 z-30 border-b bg-black ${bare ? "border-white/15" : "border-line"}`}>
-      <div className={`flex items-center gap-10 px-4 md:px-[60px] ${home ? "h-[100px] pt-4 md:h-auto md:pt-[30px]" : "h-[100px] pt-[30px] md:h-[72px] md:pt-0"}`}>
+      <div className={`flex items-center gap-10 px-4 md:px-[60px] ${home ? "h-[58px] md:h-auto md:pt-[30px]" : "h-[58px] md:h-[72px]"}`}>
         <Link href="/" aria-label="musicvolu.me home" className="shrink-0"><Logo /></Link>
 
         {!home && !bare && (
