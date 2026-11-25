@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { suggester } from "@/lib/suggestClient";
-import { SearchIcon } from "@/components/icons";
+import SearchPill, { searchInput } from "@/components/SearchPill";
 import { Cover, ReviewDot, Tag } from "@/components/ui";
 import type { Hit } from "@/lib/catalog";
 import { hitHref } from "@/lib/links";
@@ -41,11 +41,10 @@ export default function ContributeStart({ initial }: { initial: string }) {
     <main className="mx-auto max-w-[534px] px-4 pt-14 pb-24 md:pt-[72px]">
       <h1 className="text-center text-[30px] font-semibold md:text-[34px]">Add something new</h1>
       <p className="mt-3 text-center text-[15px] text-white/65">First, let’s make sure it isn’t already here.</p>
-      <div className="relative mt-8">
+      <SearchPill className="mt-8 h-[42px]">
         <input value={q} onChange={(e) => setQ(e.target.value)} autoFocus placeholder="Title or artist name" aria-label="What are you adding?"
-          className="h-[42px] w-full rounded-full bg-white pr-11 pl-4 font-mono text-[15px] text-black outline-none placeholder:text-black/40" />
-        <SearchIcon className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-black" />
-      </div>
+          className={searchInput} />
+      </SearchPill>
 
       {hits && (
         <>
