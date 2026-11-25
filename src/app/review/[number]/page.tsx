@@ -13,7 +13,8 @@ import { Dot, Name, QueueRow } from "@/components/review/ReviewCard";
 import Votes from "@/components/review/Votes";
 import { CommentIcon } from "@/components/icons";
 import { Cover, Tag } from "@/components/ui";
-import { describeChanges, FIELDS, parseDuration, type Change, type CreditRow, type Kind, type TrackRow, type Values } from "@/lib/edits";
+import { describeChanges, FIELDS, parseDuration, type Change, type CreditRow, type Kind, type MemberRow, type TrackRow, type Values } from "@/lib/edits";
+import MemberChips from "@/components/MemberChips";
 import { duration } from "@/lib/format";
 import type { PickedArtist } from "@/lib/newEntry";
 import { ago, can, fieldLabel, getCards, getComments, getCounts, lastDecision, STATUS_LABEL, type Card, type Comment, type Person, reviseBlock } from "@/lib/review";
@@ -280,10 +281,10 @@ function editRows(s: Submission, live: Values | null): Row[] {
   const cur = (live ?? {}) as Record<string, unknown>;
   const before: Record<string, unknown> = {}, after: Record<string, unknown> = {};
   for (const f of FIELDS[kind]) { before[f.key] = ""; after[f.key] = ""; }
-  before.tracks = after.tracks = before.credits = after.credits = [];
+  before.tracks = after.tracks = before.credits = after.credits = before.members = after.members = [];
   for (const [k, c] of Object.entries(s.changes)) { before[k] = c.from ?? (Array.isArray(c.to) ? [] : ""); after[k] = c.to; }
   const changes = describeChanges(kind, before as Values, after as Values);
-  const group = (k: string) => changes.filter((c) => (k === "tracks" ? c.key.startsWith("track") || c.key === "order" : c.key === k));
+  const group = (k: string) => changes.filter((c) => (k === "tracks" ? c.key.startsWith("track") || c.key === "order" : k === "members" ? c.key === "members" || c.key === "memberOrder" : c.key === k));
 
   const rows: Row[] = FIELDS[kind].filter((f) => f.type !== "readonly").map((f) => {
     if (f.type === "image") {
@@ -300,6 +301,15 @@ function editRows(s: Submission, live: Values | null): Row[] {
   if (kind === "release") {
     const cs = group("tracks");
     rows.push({ key: "tracks", label: "Tracks", live: tracksSummary((cur.tracks as TrackRow[]) ?? []), suggested: <ChangeLines cs={cs} />, changed: cs.length > 0 });
+  }
+  if (kind === "artist" && (s.changes.members || ((cur.members as MemberRow[] | undefined) ?? []).length)) {
+    const cs = group("members");
+    const live = (cur.members as MemberRow[] | undefined) ?? [];
+    const sent = s.changes.members;
+    rows.push({ key: "members", label: "Members", changed: cs.length > 0,
+      live: <MemberChips list={live} />,
+      suggested: sent ? <span className="flex flex-col gap-1.5"><MemberChips list={(sent.to as MemberRow[]) ?? []} was={(sent.from as MemberRow[]) ?? []} />
+        {cs.some((c) => c.key === "memberOrder") && <span className="font-sans text-[12px] text-white/50">New order</span>}</span> : null });
   }
   if (kind === "song") {
     const cs = group("credits");

@@ -18,13 +18,16 @@ type Props = {
   kind: NewKind;
   prefill: { title?: string; artist?: PickedArtist | null; type?: string };
   allowance: { limit: number | null; left: number | null };
+  /** Editors and admins: their badge colour, for the "Push to final review" button. */
+  pushColor?: string;
 };
 
-export default function NewEntryForm({ kind, prefill, allowance }: Props) {
+export default function NewEntryForm({ kind, prefill, allowance, pushColor }: Props) {
   const [v, setV] = useState<NewValues>(() => emptyNew(kind, prefill));
   const [note, setNote] = useState("");
   const [result, setResult] = useState<NewResult>();
   const [busy, start] = useTransition();
+  const [pushing, setPushing] = useState(false);
   const seq = useRef(0);
   const f = result?.fields ?? {};
   const set = (k: string, x: unknown) => setV((cur) => ({ ...cur, [k]: x }) as NewValues);
@@ -59,10 +62,11 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
     !val("sources").trim() && "a source for this information",
   ].filter(Boolean) as string[];
 
-  function submit() {
+  function submit(final = false) {
     setResult(undefined);
+    setPushing(final);
     start(async () => {
-      const res = await submitNew(kind, v, note);
+      const res = await submitNew(kind, v, note, final);
       if (res) setResult(res);
     });
   }
@@ -110,10 +114,16 @@ export default function NewEntryForm({ kind, prefill, allowance }: Props) {
         {outOfEdits ? `You've used all ${allowance.limit} edits this month. They reset on the 1st.` : <>Counts as 1 edit{allowance.left != null && ` · ${allowance.left} left this month`}</>}
       </p>
       {result?.error && <p role="alert" className="mt-3 rounded-[6px] border border-[#eb544d]/60 bg-[#eb544d]/10 px-3 py-2 text-[13px] text-[#ffb3ad]">{result.error}</p>}
-      <button type="button" onClick={submit} disabled={busy || outOfEdits}
+      <button type="button" onClick={() => submit()} disabled={busy || outOfEdits}
         className={`mt-4 h-11 w-full rounded-full text-[15px] font-medium disabled:opacity-60 ${missing.length ? "bg-white/45 text-black" : "bg-white text-black hover:bg-white/85"}`}>
-        {busy ? "Submitting…" : "Submit for review"}
+        {busy && !pushing ? "Submitting…" : "Submit for review"}
       </button>
+      {pushColor && (
+        <button type="button" onClick={() => submit(true)} disabled={busy || outOfEdits} style={{ background: pushColor }}
+          className={`mt-2.5 h-11 w-full rounded-full text-[15px] font-medium text-black hover:opacity-85 disabled:opacity-60 ${missing.length ? "opacity-60" : ""}`}>
+          {busy && pushing ? "Sending…" : "Push to final review"}
+        </button>
+      )}
     </>
   );
 

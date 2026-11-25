@@ -7,6 +7,12 @@ export type Kind = "artist" | "release" | "song";
 
 export type TrackRow = { id: string; title: string; duration: string };
 export type CreditRow = { id: string; role: string; name: string };
+/**
+ * A band member. artistId/slug/image are set when the member has their own artist page
+ * (the server re-reads them from the catalog; it never trusts the browser's copy).
+ * role is kept as it came from MusicBrainz ("vocals"); the form doesn't edit it.
+ */
+export type MemberRow = { name: string; role: string; artistId: string; slug: string; image: string };
 
 export type ReleaseValues = {
   title: string; artists: string; type: string; releaseDate: string;
@@ -20,6 +26,8 @@ export type ArtistValues = {
   origin: string; years: string; genres: string; aliases: string; website: string;
   /** Live: the current photo's address. Suggested: a link to a new photo (stored only once it's published). */
   cover: string;
+  /** In order: the order Noteworthy and musicvolu.me show them in. */
+  members: MemberRow[];
 };
 export type SongValues = {
   title: string; artists: string; duration: string; language: string; genres: string;
@@ -96,13 +104,18 @@ export function normalize(kind: Kind, v: Values): Values {
   const out: Record<string, unknown> = {};
   for (const f of FIELDS[kind]) {
     if (f.type === "readonly") continue;
-    const raw = (v as Record<string, string>)[f.key] ?? "";
+    const raw = (v as unknown as Record<string, string>)[f.key] ?? "";
     out[f.key] = f.type === "list" ? splitList(raw).join(", ") : clean(raw);
   }
   if (kind === "release") {
     out.tracks = (v as ReleaseValues).tracks
       .map((t) => ({ id: t.id, title: clean(t.title), duration: clean(t.duration) }))
       .filter((t) => t.title || !t.id.startsWith("n:"));
+  }
+  if (kind === "artist") {
+    out.members = ((v as ArtistValues).members ?? [])
+      .map((m) => ({ name: clean(m.name), role: clean(m.role), artistId: m.artistId ?? "", slug: m.slug ?? "", image: m.image ?? "" }))
+      .filter((m) => m.name);
   }
   if (kind === "song") {
     out.credits = (v as SongValues).credits
@@ -147,12 +160,27 @@ export function describeChanges(kind: Kind, before: Values, after: Values): Chan
     }
   }
   if (kind === "release") out.push(...trackChanges((before as ReleaseValues).tracks, (after as ReleaseValues).tracks));
+  if (kind === "artist") out.push(...memberChanges((before as ArtistValues).members ?? [], (after as ArtistValues).members ?? []));
   if (kind === "song") {
     const fmt = (c: CreditRow) => `${c.role}: ${c.name}`;
     const w = (before as SongValues).credits.map(fmt), n = (after as SongValues).credits.map(fmt);
     const added = n.filter((x) => !w.includes(x)), removed = w.filter((x) => !n.includes(x));
     if (added.length || removed.length) out.push({ key: "credits", label: "Credits", added, removed });
   }
+  return out;
+}
+
+/** Same member: the same artist page, or (no page) the same name. */
+export const memberKey = (m: Pick<MemberRow, "name" | "artistId">) => (m.artistId ? `a:${m.artistId}` : `n:${m.name.trim().toLowerCase()}`);
+
+function memberChanges(before: MemberRow[], after: MemberRow[]): Change[] {
+  const out: Change[] = [];
+  const b = new Set(before.map(memberKey)), a = new Set(after.map(memberKey));
+  const added = after.filter((m) => !b.has(memberKey(m))).map((m) => m.name);
+  const removed = before.filter((m) => !a.has(memberKey(m))).map((m) => m.name);
+  if (added.length || removed.length) out.push({ key: "members", label: "Members", added, removed });
+  const keptB = before.map(memberKey).filter((k) => a.has(k)), keptA = after.map(memberKey).filter((k) => b.has(k));
+  if (keptA.join() !== keptB.join()) out.push({ key: "memberOrder", label: "Member order", now: after.map((m) => m.name).join(", ") });
   return out;
 }
 
@@ -198,6 +226,13 @@ export function validate(kind: Kind, v: Values): Record<string, string> {
   if (!(r[nameKey] as string)?.trim()) err[nameKey] = kind === "artist" ? "An artist needs a name." : "This needs a title.";
   if ((kind === "release" || kind === "song") && !splitList(r.artists as string).length) err.artists = "Add at least one artist.";
   if (kind === "artist" && r.website && !/^(https?:\/\/)?[^\s/]+\.[^\s]+$/.test(r.website as string)) err.website = "That doesn't look like a web address.";
+  if (kind === "artist") {
+    const members = (v as ArtistValues).members ?? [];
+    if (members.length > 100) err.members = "That's too many members.";
+    if (members.some((m) => m.name.length > 300)) err.members = "One of these names is too long.";
+    const keys = members.map(memberKey);
+    if (new Set(keys).size !== keys.length) err.members = "Someone is in the list twice.";
+  }
   if (kind === "release") {
     const tracks = (v as ReleaseValues).tracks;
     if (tracks.length > 400) err.tracks = "That's too many tracks.";

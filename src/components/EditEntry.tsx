@@ -3,12 +3,13 @@
 // edit", "Song · Royals · edit" and the phone version). Changed fields get a teal outline and a
 // "Was:" line; the "Your changes" panel lists every change and sends them for review together.
 import GenreTags from "./GenreTags";
+import MemberTags from "./MemberTags";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { reviseEdit, submitEdit, type SubmitResult } from "@/app/edit-actions";
 import {
   CREDIT_ROLES, FIELDS, SUGGEST, countChanges, describeChanges, normalize,
-  type Change, type CreditRow, type Kind, type ReleaseValues, type SongValues, type TrackRow, type Values,
+  type ArtistValues, type Change, type CreditRow, type Kind, type ReleaseValues, type SongValues, type TrackRow, type Values,
 } from "@/lib/edits";
 import { parseTracklist } from "@/lib/newEntry";
 import { PlusIcon } from "./icons";
@@ -24,19 +25,22 @@ type Props = {
   revise?: { number: number; base: Values; note: string; back: string };
   /** Read-only sections under the form (Discography, Appears on). */
   children?: ReactNode;
+  /** Editors and admins: their badge colour, for the "Push to final review" button. */
+  pushColor?: string;
 };
 
 export const box = "rounded-[4px] border bg-[#0b0b0c] px-3 font-mono text-[14px] text-white outline-none placeholder:text-white/30 focus:border-white/80";
 export const boxH = "h-[34px]";
 export const border = (changed: boolean, err?: string) => (err ? "border-[#eb544d]" : changed ? "border-teal" : "border-white/25");
 
-export default function EditEntry({ kind, slug, name, tag, cover, round, initial: suggested, fixed, allowance, focus, revise, children }: Props) {
+export default function EditEntry({ kind, slug, name, tag, cover, round, initial: suggested, fixed, allowance, focus, revise, children, pushColor }: Props) {
   const initial = revise?.base ?? suggested;
   const [values, setValues] = useState<Values>(suggested);
   const [note, setNote] = useState(revise?.note ?? "");
   const [result, setResult] = useState<SubmitResult>();
   const [sheet, setSheet] = useState(false);
   const [busy, start] = useTransition();
+  const [pushing, setPushing] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const seq = useRef(0);
 
@@ -59,10 +63,11 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
   const set = (key: string, v: unknown) => setValues((cur) => ({ ...cur, [key]: v }) as Values);
   const entryHref = revise?.back ?? `/${kind}/${slug}`;
 
-  function submit() {
+  function submit(final = false) {
     setResult(undefined);
+    setPushing(final);
     start(async () => {
-      const r = revise ? await reviseEdit(revise.number, values, note) : await submitEdit(kind, slug, values, note);
+      const r = revise ? await reviseEdit(revise.number, values, note) : await submitEdit(kind, slug, values, note, final);
       if (r) setResult(r);
     });
   }
@@ -103,10 +108,16 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
         {revise ? <>Updates #{revise.number}. Doesn&rsquo;t count as a new edit.</> : outOfEdits ? `You've used all ${allowance.limit} edits this month. They reset on the 1st.` : <>Counts as 1 edit{left && ` · ${left}`}</>}
       </p>
       {result?.error && <p role="alert" className="mt-3 rounded-[6px] border border-[#eb544d]/60 bg-[#eb544d]/10 px-3 py-2 text-[13px] text-[#ffb3ad]">{result.error}</p>}
-      <button type="button" onClick={submit} disabled={busy || count === 0 || outOfEdits}
+      <button type="button" onClick={() => submit()} disabled={busy || count === 0 || outOfEdits}
         className="mt-4 rounded-full bg-white px-4 py-2 text-[14px] font-medium text-black hover:bg-white/85 disabled:opacity-50 max-md:w-full max-md:py-3 max-md:text-[16px]">
-        {revise ? (busy ? "Saving…" : `Save ${count} change${count === 1 ? "" : "s"} to #${revise.number}`) : busy ? "Submitting…" : count === 0 ? "Submit for review" : `Submit ${count} change${count === 1 ? "" : "s"} for review`}
+        {revise ? (busy ? "Saving…" : `Save ${count} change${count === 1 ? "" : "s"} to #${revise.number}`) : busy && !pushing ? "Submitting…" : count === 0 ? "Submit for review" : `Submit ${count} change${count === 1 ? "" : "s"} for review`}
       </button>
+      {pushColor && !revise && (
+        <button type="button" onClick={() => submit(true)} disabled={busy || count === 0 || outOfEdits} style={{ background: pushColor }}
+          className="mt-2.5 block rounded-full px-4 py-2 text-[14px] font-medium text-black hover:opacity-85 disabled:opacity-50 max-md:w-full max-md:py-3 max-md:text-[16px]">
+          {busy && pushing ? "Sending…" : "Push to final review"}
+        </button>
+      )}
     </>
   );
 
@@ -146,8 +157,8 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
             <h2 className="field-label mt-6 md:mt-12">Details</h2>
             <div className="mt-3 flex flex-col gap-4 md:gap-[14px]">
               {FIELDS[kind].map((f) => {
-                const raw = f.type === "readonly" ? fixed[f.key] ?? "" : ((values as Record<string, string>)[f.key] ?? "");
-                const was = (initial as Record<string, string>)[f.key] ?? "";
+                const raw = f.type === "readonly" ? fixed[f.key] ?? "" : ((values as unknown as Record<string, string>)[f.key] ?? "");
+                const was = (initial as unknown as Record<string, string>)[f.key] ?? "";
                 const changed = changedKeys.has(f.key);
                 const err = errors[f.key];
                 const id = `f-${f.key}`;
@@ -188,6 +199,19 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
             {kind === "release" && (
               <Tracklist rows={(values as ReleaseValues).tracks} initial={(initial as ReleaseValues).tracks} errors={errors}
                 onChange={(rows) => set("tracks", rows)} newId={() => `n:${++seq.current}`} />
+            )}
+            {kind === "artist" && ((values as ArtistValues).kind === "Band" || (initial as ArtistValues).members.length > 0) && (
+              <section className="mt-12">
+                <div className="flex items-baseline justify-between pb-3">
+                  <h2 className="field-label">Members · {(values as ArtistValues).members.length}</h2>
+                  {(values as ArtistValues).members.length > 1 && <span className="text-[13px] text-white/50">Drag to reorder</span>}
+                </div>
+                <MemberTags id="f-members" value={(values as ArtistValues).members} initial={(initial as ArtistValues).members}
+                  onChange={(m) => set("members", m)} invalid={!!errors.members}
+                  className={`${box} ${border(changedKeys.has("members") || changedKeys.has("memberOrder"), errors.members)}`} />
+                {errors.members ? <p role="alert" className="mt-1 text-[12px] text-[#ff8a80]">{errors.members}</p>
+                  : <p className="mt-1.5 text-[12px] text-white/45">Members with their own artist page show its photo and link to it.</p>}
+              </section>
             )}
             {kind === "song" && (
               <Credits rows={(values as SongValues).credits} initial={(initial as SongValues).credits} errors={errors}

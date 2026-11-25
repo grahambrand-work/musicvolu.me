@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { lastDecision, reviseBlock } from "@/lib/review";
-import { countChanges, describeChanges, normalize, validate, type Kind, type Values } from "@/lib/edits";
-import { getEditable, getSubmission, OutOfEdits, saveSubmission } from "@/lib/submissions";
+import { countChanges, describeChanges, normalize, validate, type ArtistValues, type Kind, type Values } from "@/lib/edits";
+import { getEditable, getSubmission, OutOfEdits, resolveMembers, saveSubmission } from "@/lib/submissions";
 import { getViewer } from "@/lib/viewer";
 import { CoverError, fetchCover } from "@/lib/coverFetch";
 
@@ -13,7 +13,7 @@ export type SubmitResult = { error: string; fields?: Record<string, string> } | 
 
 const KINDS: Kind[] = ["artist", "release", "song"];
 
-export async function submitEdit(kind: Kind, slug: string, after: Values, note: string): Promise<SubmitResult> {
+export async function submitEdit(kind: Kind, slug: string, after: Values, note: string, final = false): Promise<SubmitResult> {
   if (!KINDS.includes(kind)) return { error: "Something went wrong. Reload the page and try again." };
   const viewer = await getViewer();
   if (!viewer) return { error: "You've been signed out. Log in again to submit." };
@@ -24,6 +24,10 @@ export async function submitEdit(kind: Kind, slug: string, after: Values, note: 
   // Rebuild "before" from the database and keep only fields this form can edit.
   const before = normalize(kind, entry.values);
   const cleaned = normalize(kind, { ...entry.values, ...pick(after, entry.values) } as Values);
+  if (kind === "artist") {
+    const c = cleaned as ArtistValues;
+    c.members = await resolveMembers(c.members, entry.id);
+  }
   const fields = validate(kind, cleaned);
   if (Object.keys(fields).length) return { error: "Fix the highlighted fields first.", fields };
 
@@ -41,7 +45,7 @@ export async function submitEdit(kind: Kind, slug: string, after: Values, note: 
   let number: number;
   try {
     number = await saveSubmission(viewer, {
-      kind: "edit", entityType: kind, entityId: entry.id, entityName: entry.name, changes: diff, note: text,
+      kind: "edit", entityType: kind, entityId: entry.id, entityName: entry.name, changes: diff, note: text, final,
     });
   } catch (e) {
     if (e instanceof OutOfEdits) return { error: "You've used all your edits for this month. They reset on the 1st." };
@@ -70,6 +74,10 @@ export async function reviseEdit(number: number, after: Values, note: string): P
   if (!entry) return { error: "The entry this edit is for no longer exists." };
   const before = normalize(kind, entry.values);
   const cleaned = normalize(kind, { ...entry.values, ...pick(after, entry.values) } as Values);
+  if (kind === "artist") {
+    const c = cleaned as ArtistValues;
+    c.members = await resolveMembers(c.members, entry.id);
+  }
   const fields = validate(kind, cleaned);
   if (Object.keys(fields).length) return { error: "Fix the highlighted fields first.", fields };
   if (!countChanges(describeChanges(kind, before, cleaned))) {
@@ -125,6 +133,12 @@ async function checkCover(diff: Record<string, { from: unknown; to: unknown }>):
   }
 }
 
+/** Row fields, for a list the entry has no rows in yet. */
+const SHAPES: Record<string, object> = {
+  tracks: { id: 0, title: 0, duration: 0 }, credits: { id: 0, role: 0, name: 0 },
+  members: { name: 0, role: 0, artistId: 0, slug: 0, image: 0 },
+};
+
 /** Only the keys the entry actually has, as strings or the row arrays. Ignores anything extra. */
 function pick(after: Values, shape: Values): Partial<Values> {
   const out: Record<string, unknown> = {};
@@ -135,7 +149,7 @@ function pick(after: Values, shape: Values): Partial<Values> {
       if (!Array.isArray(x)) continue;
       out[k] = x.slice(0, 500).map((row) => {
         const r = (row ?? {}) as Record<string, unknown>;
-        return Object.fromEntries(Object.keys(v[0] ?? (k === "tracks" ? { id: 0, title: 0, duration: 0 } : { id: 0, role: 0, name: 0 }))
+        return Object.fromEntries(Object.keys(v[0] ?? SHAPES[k] ?? { id: 0, role: 0, name: 0 })
           .map((f) => [f, typeof r[f] === "string" ? (r[f] as string).slice(0, 400) : ""]));
       });
     } else if (typeof x === "string") {

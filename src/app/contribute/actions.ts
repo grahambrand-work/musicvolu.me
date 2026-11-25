@@ -37,7 +37,7 @@ export async function quickAddArtist(raw: unknown): Promise<{ artist: PickedArti
 }
 
 /** The full new artist / release / song forms. */
-export async function submitNew(kind: NewKind, raw: unknown, note: string): Promise<NewResult> {
+export async function submitNew(kind: NewKind, raw: unknown, note: string, final = false): Promise<NewResult> {
   if (!KINDS.includes(kind)) return { error: "Something went wrong. Reload the page and try again." };
   const viewer = await getViewer();
   if (!viewer) return { error: "You've been signed out. Log in again to submit." };
@@ -56,7 +56,7 @@ export async function submitNew(kind: NewKind, raw: unknown, note: string): Prom
     number = await saveSubmission(viewer, {
       kind: "new", entityType: kind, entityId: null, entityName: nameOf(kind, v),
       changes: newChanges(kind, v), note: note.trim().slice(0, 4000) || null, sources: v.sources,
-      dependsOn: by.find((a) => a.review)?.review ?? null,
+      dependsOn: by.find((a) => a.review)?.review ?? null, final,
     });
   } catch (e) {
     if (e instanceof OutOfEdits) return { error: "You've used all your edits for this month. They reset on the 1st." };
