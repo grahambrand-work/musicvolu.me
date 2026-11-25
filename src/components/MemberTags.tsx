@@ -2,10 +2,11 @@
 // Band members as tags, like genres (Graham, 2026-11-24). Typing searches the catalog's artists:
 // picking one links the member to their own artist page (and shows its photo); anything else
 // can be added as a plain name. Drag a tag (or use the arrow keys on it) to change the order,
-// which is the order musicvolu.me and Noteworthy list the members in.
+// which is the order musicvolu.me and Noteworthy list the members in. Clicking a tag opens its
+// Role box underneath ("vocals, guitar").
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { findArtistsAction } from "@/app/contribute/actions";
-import { memberKey, type MemberRow } from "@/lib/edits";
+import { MEMBER_ROLES, memberKey, type MemberRow } from "@/lib/edits";
 import type { ArtistChoice } from "@/lib/submissions";
 import { Cover } from "./ui";
 
@@ -17,12 +18,17 @@ export default function MemberTags({ id, value, initial, onChange, className, in
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const moved = useRef(false);
   const [, start] = useTransition();
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
   const chips = useRef<(HTMLSpanElement | null)[]>([]);
   const seq = useRef(0);
   const old = new Set(initial.map(memberKey));
+  const oldRole = new Map(initial.map((m) => [memberKey(m), m.role]));
+  const plain = className.split(" ").filter((c) => !c.startsWith("border-")).join(" ");
+  const editIndex = editing ? value.findIndex((m) => memberKey(m) === editing) : -1;
   const taken = new Set(value.map(memberKey));
 
   useEffect(() => {
@@ -73,11 +79,18 @@ export default function MemberTags({ id, value, initial, onChange, className, in
         className={`${className} flex min-h-[34px] w-full cursor-text flex-wrap items-center gap-1.5 py-1 ${invalid ? "border-[#eb544d]" : ""}`}>
         {value.map((m, i) => {
           const isNew = !old.has(memberKey(m));
+          const roleChanged = !isNew && oldRole.get(memberKey(m)) !== m.role.trim();
+          const isEditing = editing === memberKey(m);
           return (
             <span key={memberKey(m)} ref={(el) => { chips.current[i] = el; }} tabIndex={0} role="button"
               aria-label={`${m.name}, member ${i + 1} of ${value.length}. Drag, or use the left and right arrow keys, to move.`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (moved.current) return;
+                setEditing((cur) => (cur === memberKey(m) ? null : memberKey(m)));
+              }}
               onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditing(memberKey(m)); return; }
                 if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
                 e.preventDefault();
                 const to = i + (e.key === "ArrowLeft" ? -1 : 1);
@@ -86,7 +99,7 @@ export default function MemberTags({ id, value, initial, onChange, className, in
               }}
               onPointerDown={(e) => {
                 if ((e.target as HTMLElement).closest("button")) return;
-                e.currentTarget.setPointerCapture(e.pointerId); setDrag(i);
+                e.currentTarget.setPointerCapture(e.pointerId); setDrag(i); moved.current = false;
               }}
               onPointerMove={(e) => {
                 if (drag === null) return;
@@ -95,12 +108,13 @@ export default function MemberTags({ id, value, initial, onChange, className, in
                   const r = el.getBoundingClientRect();
                   return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
                 });
-                if (to >= 0 && to !== drag) { move(drag, to); setDrag(to); }
+                if (to >= 0 && to !== drag) { move(drag, to); setDrag(to); moved.current = true; }
               }}
               onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
-              className={`inline-flex cursor-grab touch-none items-center gap-1.5 rounded-full border py-0.5 pr-1 font-sans text-[13px] select-none active:cursor-grabbing ${m.image ? "pl-0.5" : "pl-2.5"} ${isNew ? "border-teal/70 bg-teal/10" : "border-transparent bg-white/12"} ${drag === i ? "opacity-60" : ""}`}>
+              className={`inline-flex cursor-grab touch-none items-center gap-1.5 rounded-full border py-0.5 pr-1 font-sans text-[13px] select-none active:cursor-grabbing ${m.image ? "pl-0.5" : "pl-2.5"} ${isNew || roleChanged ? "border-teal/70 bg-teal/10" : isEditing ? "border-white/60 bg-white/12" : "border-transparent bg-white/12"} ${drag === i ? "opacity-60" : ""}`}>
               {m.image && <Cover src={m.image} size={20} round />}
               {m.name}
+              {m.role && <span className="text-white/50">{m.role}</span>}
               {isNew && <span className="rounded-full border border-teal/60 px-1.5 text-[10px] text-teal">new</span>}
               <button type="button" aria-label={`Remove ${m.name}`} onClick={(e) => { e.stopPropagation(); remove(i); }}
                 className="grid size-4 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/15 hover:text-white">
@@ -118,6 +132,21 @@ export default function MemberTags({ id, value, initial, onChange, className, in
           placeholder={value.length ? "" : "Start typing a name"}
           className="min-w-[10ch] flex-1 bg-transparent font-mono text-[14px] outline-none placeholder:text-white/30" />
       </div>
+      {editIndex >= 0 && (
+        <div className="mt-2 flex items-center gap-2.5">
+          <label htmlFor="member-role" className="shrink-0 text-[13px] text-white/70">Role · {value[editIndex].name}</label>
+          <input id="member-role" autoFocus value={value[editIndex].role} list="member-roles" maxLength={60} autoComplete="off"
+            placeholder="e.g. vocals, guitar"
+            onChange={(e) => onChange(value.map((x, n) => (n === editIndex ? { ...x, role: e.target.value } : x)))}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); setEditing(null); } }}
+            className={`${plain} h-[30px] min-w-0 flex-1 ${oldRole.has(editing!) && oldRole.get(editing!) !== value[editIndex].role.trim() ? "border-teal" : "border-white/25"}`} />
+          <button type="button" onClick={() => setEditing(null)} className="shrink-0 text-[13px] text-white/60 hover:text-white">Done</button>
+          {oldRole.has(editing!) && oldRole.get(editing!) && oldRole.get(editing!) !== value[editIndex].role.trim() && (
+            <span className="hidden shrink-0 text-[12px] text-teal md:inline">Was: {oldRole.get(editing!)}</span>
+          )}
+        </div>
+      )}
+      <datalist id="member-roles">{MEMBER_ROLES.map((r) => <option key={r} value={r} />)}</datalist>
       {open && q && (
         <ul id={listId} role="listbox" className="absolute top-[calc(100%+4px)] left-0 z-40 w-full overflow-hidden rounded-[6px] border border-white/15 bg-[#141415] py-1 text-[14px] shadow-[0_12px_32px_rgb(0_0_0/.6)]">
           {matches.map((a, i) => (
