@@ -5,7 +5,7 @@
 // Noteworthy's discography search.
 import { useMemo, useState, type ReactNode } from "react";
 import ReleaseList, { type ReleaseItem } from "./ReleaseList";
-import { SearchIcon } from "./icons";
+import SearchPill, { searchInput } from "./SearchPill";
 
 const words = (s: string) =>
   s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -24,25 +24,23 @@ export default function DiscographySearch({ items, label }: { items: ReleaseItem
   return (
     <>
       {items.length > 0 && (
-        <div className="mb-4 flex h-9 items-center gap-2 rounded-full bg-white pr-2 pl-4 text-black">
-          <SearchIcon className="shrink-0 text-black/40" />
+        <SearchPill className="mb-4 h-9" right={q && (
+          <button type="button" onClick={() => setQ("")} aria-label="Clear search"
+            className="grid size-7 shrink-0 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }}
             placeholder="Search discography"
             aria-label="Search discography"
-            className="min-w-0 flex-1 bg-transparent font-mono text-[16px] text-black outline-none placeholder:text-black/40 md:text-[14px]"
+            className={searchInput}
           />
-          {q && (
-            <button type="button" onClick={() => setQ("")} aria-label="Clear search"
-              className="grid size-7 shrink-0 place-items-center rounded-full text-black/50 hover:bg-black/8 hover:text-black">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-        </div>
+        </SearchPill>
       )}
       {label}
       {shown.length > 0 || !q ? <ReleaseList items={shown} /> : (

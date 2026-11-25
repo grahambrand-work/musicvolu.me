@@ -4,6 +4,7 @@
 // what went live (Graham, 2026-11-18).
 import type { Metadata } from "next";
 import Link from "next/link";
+import SearchPill, { searchInput } from "@/components/SearchPill";
 import Header from "@/components/Header";
 import { Change, MusicBrainz } from "@/components/history/HistoryPage";
 import { Name } from "@/components/review/ReviewCard";
@@ -66,7 +67,7 @@ export default async function ActivityPage({ searchParams }: PageProps<"/activit
 
         {all && (
           <form method="get" className="mt-6 flex flex-wrap items-center gap-2.5">
-            <input name="q" defaultValue={f.q} placeholder="Filter by person or entry…" className="h-9 w-full rounded-full bg-white px-4 text-[14px] text-black outline-none placeholder:text-black/40 md:w-[310px]" />
+            <SearchPill className="h-9 w-full md:w-[310px]"><input name="q" defaultValue={f.q} placeholder="Filter by person or entry…" aria-label="Filter by person or entry" className={searchInput} /></SearchPill>
             <select name="action" defaultValue={f.action} className={select}>{LOG_ACTIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
             <select name="type" defaultValue={f.type} className={select}>{TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}</select>
             <select name="range" defaultValue={f.range} className={select}>{RANGES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select>

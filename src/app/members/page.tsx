@@ -2,6 +2,7 @@
 // role, edits this month, published and rejected counts, and the edit allowance per tier.
 import type { Metadata } from "next";
 import Link from "next/link";
+import SearchPill, { searchInput } from "@/components/SearchPill";
 import { notFound, redirect } from "next/navigation";
 import Header from "@/components/Header";
 import AllowanceForm from "@/components/members/AllowanceForm";
@@ -47,8 +48,9 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
           <section>
             <form method="get" className="flex flex-wrap items-center gap-2.5">
               {group !== "all" && <input type="hidden" name="show" value={group} />}
-              <input name="q" defaultValue={q} placeholder="Find a member…" aria-label="Find a member"
-                className="h-10 w-full rounded-full bg-white px-4 text-[14px] text-black outline-none placeholder:text-black/40 md:w-[240px]" />
+              <SearchPill className="h-10 w-full md:w-[240px]">
+                <input name="q" defaultValue={q} placeholder="Find a member…" aria-label="Find a member" className={searchInput} />
+              </SearchPill>
               <nav className="flex gap-2 overflow-x-auto max-md:-mx-4 max-md:px-4">
                 {GROUPS.map((g) => (
                   <Link key={g.key} href={href({ show: g.key })}
