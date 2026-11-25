@@ -284,7 +284,7 @@ function editRows(s: Submission, live: Values | null): Row[] {
   before.tracks = after.tracks = before.credits = after.credits = before.members = after.members = [];
   for (const [k, c] of Object.entries(s.changes)) { before[k] = c.from ?? (Array.isArray(c.to) ? [] : ""); after[k] = c.to; }
   const changes = describeChanges(kind, before as Values, after as Values);
-  const group = (k: string) => changes.filter((c) => (k === "tracks" ? c.key.startsWith("track") || c.key === "order" : k === "members" ? c.key === "members" || c.key === "memberOrder" : c.key === k));
+  const group = (k: string) => changes.filter((c) => (k === "tracks" ? c.key.startsWith("track") || c.key === "order" : k === "members" ? c.key === "members" || c.key === "memberOrder" || c.key.startsWith("memberRole:") : c.key === k));
 
   const rows: Row[] = FIELDS[kind].filter((f) => f.type !== "readonly").map((f) => {
     if (f.type === "image") {
@@ -309,7 +309,11 @@ function editRows(s: Submission, live: Values | null): Row[] {
     rows.push({ key: "members", label: "Members", changed: cs.length > 0,
       live: <MemberChips list={live} />,
       suggested: sent ? <span className="flex flex-col gap-1.5"><MemberChips list={(sent.to as MemberRow[]) ?? []} was={(sent.from as MemberRow[]) ?? []} />
-        {cs.some((c) => c.key === "memberOrder") && <span className="font-sans text-[12px] text-white/50">New order</span>}</span> : null });
+        {cs.some((c) => c.key === "memberOrder") && <span className="font-sans text-[12px] text-white/50">New order</span>}
+        {cs.filter((c) => c.key.startsWith("memberRole:")).map((c) => (
+          <span key={c.key} className="text-[13px]"><span className="mr-2 font-sans text-[12px] text-white/50">{c.label}</span>
+            {c.was && <span className="mr-2 text-white/45 line-through">{c.was}</span>}{c.now || <span className="text-white/45">(none)</span>}</span>
+        ))}</span> : null });
   }
   if (kind === "song") {
     const cs = group("credits");

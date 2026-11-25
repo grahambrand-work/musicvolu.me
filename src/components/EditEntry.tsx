@@ -208,9 +208,9 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
                 </div>
                 <MemberTags id="f-members" value={(values as ArtistValues).members} initial={(initial as ArtistValues).members}
                   onChange={(m) => set("members", m)} invalid={!!errors.members}
-                  className={`${box} ${border(changedKeys.has("members") || changedKeys.has("memberOrder"), errors.members)}`} />
+                  className={`${box} ${border([...changedKeys].some((k) => k === "members" || k.startsWith("member")), errors.members)}`} />
                 {errors.members ? <p role="alert" className="mt-1 text-[12px] text-[#ff8a80]">{errors.members}</p>
-                  : <p className="mt-1.5 text-[12px] text-white/45">Members with their own artist page show its photo and link to it.</p>}
+                  : <p className="mt-1.5 text-[12px] text-white/45">Click a member to change their role. Members with their own artist page show its photo.</p>}
               </section>
             )}
             {kind === "song" && (

@@ -10,7 +10,7 @@ export type CreditRow = { id: string; role: string; name: string };
 /**
  * A band member. artistId/slug/image are set when the member has their own artist page
  * (the server re-reads them from the catalog; it never trusts the browser's copy).
- * role is kept as it came from MusicBrainz ("vocals"); the form doesn't edit it.
+ * role is what they do in the band ("vocals, guitar"), as MusicBrainz writes it.
  */
 export type MemberRow = { name: string; role: string; artistId: string; slug: string; image: string };
 
@@ -37,6 +37,8 @@ export type Values = ReleaseValues | ArtistValues | SongValues;
 
 export const RELEASE_TYPES = ["Album", "EP", "Single", "Live", "Compilation"];
 export const ARTIST_KINDS = [{ value: "Solo artist", label: "Person" }, { value: "Band", label: "Group" }];
+/** Suggestions under a member's Role box. Anything else can be typed. */
+export const MEMBER_ROLES = ["vocals", "lead vocals", "backing vocals", "guitar", "lead guitar", "rhythm guitar", "bass", "drums", "percussion", "keyboards", "piano", "synthesizer", "DJ", "producer", "violin", "saxophone", "trumpet"];
 export const CREDIT_ROLES = ["Songwriter", "Composer", "Lyricist", "Producer", "Co-producer", "Vocals", "Featured", "Guitar", "Bass", "Drums", "Keyboards", "Mixing", "Mastering", "Engineer", "Arranger", "Other"];
 
 type FieldSpec = {
@@ -181,6 +183,11 @@ function memberChanges(before: MemberRow[], after: MemberRow[]): Change[] {
   if (added.length || removed.length) out.push({ key: "members", label: "Members", added, removed });
   const keptB = before.map(memberKey).filter((k) => a.has(k)), keptA = after.map(memberKey).filter((k) => b.has(k));
   if (keptA.join() !== keptB.join()) out.push({ key: "memberOrder", label: "Member order", now: after.map((m) => m.name).join(", ") });
+  const was = new Map(before.map((m) => [memberKey(m), m.role]));
+  for (const m of after) {
+    const k = memberKey(m);
+    if (was.has(k) && was.get(k) !== m.role) out.push({ key: `memberRole:${k}`, label: `${m.name}’s role`, was: was.get(k), now: m.role });
+  }
   return out;
 }
 
@@ -230,6 +237,7 @@ export function validate(kind: Kind, v: Values): Record<string, string> {
     const members = (v as ArtistValues).members ?? [];
     if (members.length > 100) err.members = "That's too many members.";
     if (members.some((m) => m.name.length > 300)) err.members = "One of these names is too long.";
+    if (members.some((m) => m.role.length > 60)) err.members = "Keep each role under 60 characters.";
     const keys = members.map(memberKey);
     if (new Set(keys).size !== keys.length) err.members = "Someone is in the list twice.";
   }

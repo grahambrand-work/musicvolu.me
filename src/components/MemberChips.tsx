@@ -14,6 +14,7 @@ export default function MemberChips({ list, was }: { list: MemberRow[]; was?: Me
       <>
         {m.image && <Cover src={m.image} size={20} round />}
         <span className={state === "gone" ? "line-through" : ""}>{m.name}</span>
+        {m.role && <span className={state === "new" ? "text-teal/70" : "text-white/50"}>{m.role}</span>}
       </>
     );
     const cls = `inline-flex items-center gap-1.5 rounded-full border py-0.5 font-sans text-[13px] ${m.image ? "pl-0.5 pr-2.5" : "px-2.5"} ${
