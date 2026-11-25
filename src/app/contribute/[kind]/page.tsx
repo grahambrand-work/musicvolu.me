@@ -23,7 +23,12 @@ export default async function NewEntryPage({ params, searchParams }: PageProps<"
   if (!kind) notFound();
   const viewer = await getViewer();
   const str = (x: string) => (typeof sp[x] === "string" ? (sp[x] as string).slice(0, 300) : "");
-  if (!viewer) redirect(`/login?next=${encodeURIComponent(`/contribute/${kind}${str("title") ? `?title=${encodeURIComponent(str("title"))}` : ""}`)}`);
+  if (!viewer) {
+    // Keep the pre-filled title, artist and type through sign-in (Noteworthy links here with ?artist=&type=).
+    const keep = new URLSearchParams();
+    for (const x of ["title", "artist", "type"]) if (str(x)) keep.set(x, str(x));
+    redirect(`/login?next=${encodeURIComponent(`/contribute/${kind}${keep.size ? `?${keep}` : ""}`)}`);
+  }
   let artist: PickedArtist | null = null;
   if (str("artist")) {
     const a = await getArtist(str("artist"));
