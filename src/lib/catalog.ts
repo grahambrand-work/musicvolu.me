@@ -327,3 +327,12 @@ export const getSong = cache(async (slug: string): Promise<Song | null | undefin
     ...hist,
   };
 });
+
+/** Search within one artist (artist page search box): public.search_artist, shared with Noteworthy. */
+export async function searchArtist(artistSlug: string, raw: string): Promise<Hit[] | null> {
+  const sql = db();
+  if (!sql) return null;
+  if (!raw.trim()) return [];
+  const rows = await sql<DbHit[]>`select * from public.search_artist(${raw}, ${artistSlug}, 30)`;
+  return rows.map(toHit);
+}
