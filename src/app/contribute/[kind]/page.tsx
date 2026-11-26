@@ -27,7 +27,8 @@ export default async function NewEntryPage({ params, searchParams }: PageProps<"
     // Keep the pre-filled title, artist and type through sign-in (Noteworthy links here with ?artist=&type=).
     const keep = new URLSearchParams();
     for (const x of ["title", "artist", "type"]) if (str(x)) keep.set(x, str(x));
-    redirect(`/login?next=${encodeURIComponent(`/contribute/${kind}${keep.size ? `?${keep}` : ""}`)}`);
+    const q = keep.toString();
+    redirect(`/login?next=${encodeURIComponent(`/contribute/${kind}${q ? `?${q}` : ""}`)}`);
   }
   let artist: PickedArtist | null = null;
   if (str("artist")) {
