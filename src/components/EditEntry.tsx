@@ -27,13 +27,15 @@ type Props = {
   children?: ReactNode;
   /** Editors and admins: their badge colour, for the "Push to final review" button. */
   pushColor?: string;
+  /** Admins and tier 3 editors can upload covers and photos, not just link them. */
+  canUpload?: boolean;
 };
 
 export const box = "rounded-[4px] border bg-[#0b0b0c] px-3 font-mono text-[14px] text-white outline-none placeholder:text-white/30 focus:border-white/80";
 export const boxH = "h-[34px]";
 export const border = (changed: boolean, err?: string) => (err ? "border-[#eb544d]" : changed ? "border-teal" : "border-white/25");
 
-export default function EditEntry({ kind, slug, name, tag, cover, round, initial: suggested, fixed, allowance, focus, revise, children, pushColor }: Props) {
+export default function EditEntry({ kind, slug, name, tag, cover, round, initial: suggested, fixed, allowance, focus, revise, children, pushColor, canUpload }: Props) {
   const initial = revise?.base ?? suggested;
   const [values, setValues] = useState<Values>(suggested);
   const [note, setNote] = useState(revise?.note ?? "");
@@ -171,7 +173,7 @@ export default function EditEntry({ kind, slug, name, tag, cover, round, initial
                         <Select id={id} value={raw} onChange={(v) => set(f.key, v)} options={f.options!} className={border(changed, err)} autoFocus={focus === f.key} />
                       ) : f.type === "image" ? (
                         <CoverLink id={id} value={raw === was ? "" : raw} onChange={(x) => set(f.key, x.trim() ? x : was)}
-                          placeholder={f.placeholder} className={`${box} ${boxH} w-full ${border(changed, err)}`} autoFocus={focus === f.key} invalid={!!err} />
+                          placeholder={f.placeholder} className={`${box} ${boxH} w-full ${border(changed, err)}`} autoFocus={focus === f.key} invalid={!!err} upload={canUpload} />
                       ) : f.key === "genres" ? (
                         <GenreTags id={id} value={raw} onChange={(v) => set(f.key, v)} className={`${box} ${border(changed, err)}`}
                           invalid={!!err} autoFocus={focus === f.key} />

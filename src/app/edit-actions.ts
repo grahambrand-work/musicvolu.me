@@ -8,6 +8,7 @@ import { countChanges, describeChanges, normalize, validate, type ArtistValues, 
 import { getEditable, getSubmission, OutOfEdits, resolveMembers, saveSubmission } from "@/lib/submissions";
 import { getViewer } from "@/lib/viewer";
 import { CoverError, fetchCover } from "@/lib/coverFetch";
+import { pendingPath, removeFiles } from "@/lib/coverStore";
 
 export type SubmitResult = { error: string; fields?: Record<string, string> } | undefined;
 
@@ -118,6 +119,11 @@ export async function reviseEdit(number: number, after: Values, note: string): P
     return true;
   });
   if (!ok) return { error: "Someone else moved this one already. Reload to see where it is now." };
+  // An uploaded picture this edit no longer uses is deleted straight away.
+  const dropped = pendingPath(old.cover?.to);
+  if (dropped && JSON.stringify(old.cover?.to) !== JSON.stringify(diff.cover?.to)) {
+    await removeFiles([dropped]).catch((e) => console.error("drop upload", (e as Error).message));
+  }
   revalidatePath("/review", "layout");
   revalidatePath(`/submission/${number}`);
   redirect(mine ? `/submission/${number}?updated=1` : `/review/${number}?updated=1`);

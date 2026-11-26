@@ -20,9 +20,11 @@ type Props = {
   allowance: { limit: number | null; left: number | null };
   /** Editors and admins: their badge colour, for the "Push to final review" button. */
   pushColor?: string;
+  /** Admins and tier 3 editors can upload a cover or photo, not just link one. */
+  canUpload?: boolean;
 };
 
-export default function NewEntryForm({ kind, prefill, allowance, pushColor }: Props) {
+export default function NewEntryForm({ kind, prefill, allowance, pushColor, canUpload }: Props) {
   const [v, setV] = useState<NewValues>(() => emptyNew(kind, prefill));
   const [note, setNote] = useState("");
   const [result, setResult] = useState<NewResult>();
@@ -228,7 +230,7 @@ export default function NewEntryForm({ kind, prefill, allowance, pushColor }: Pr
             <div className="mb-6">
               <label htmlFor="new-cover" className="field-label block pb-2 text-white/80">{kind === "artist" ? "Photo" : "Cover"} <span className="ml-1 text-[11px] normal-case tracking-normal text-white/45">Optional</span></label>
               <CoverLink id="new-cover" value={val("cover")} onChange={(x) => set("cover", x)} invalid={!!f.cover}
-                placeholder={kind === "artist" ? "Link to a photo of the artist (https://…)" : "Link to the cover image (https://…)"} emptyHint="You can also add one later."
+                placeholder={kind === "artist" ? "Link to a photo of the artist (https://…)" : "Link to the cover image (https://…)"} emptyHint="You can also add one later." upload={canUpload}
                 className={`h-10 w-full rounded-[4px] border bg-[#0b0b0c] px-3 text-[14px] outline-none placeholder:text-white/35 focus:border-white/80 ${f.cover ? "border-[#eb544d]" : "border-white/30"}`} />
               {f.cover && <span role="alert" className="mt-1 block text-[12px] text-[#ff8a80]">{f.cover}</span>}
             </div>

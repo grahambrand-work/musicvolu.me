@@ -15,6 +15,7 @@ import { CommentIcon } from "@/components/icons";
 import { Cover, Tag } from "@/components/ui";
 import { describeChanges, FIELDS, parseDuration, type Change, type CreditRow, type Kind, type MemberRow, type TrackRow, type Values } from "@/lib/edits";
 import MemberChips from "@/components/MemberChips";
+import { isUpload } from "@/lib/uploads";
 import { duration } from "@/lib/format";
 import type { PickedArtist } from "@/lib/newEntry";
 import { ago, can, fieldLabel, getCards, getComments, getCounts, lastDecision, STATUS_LABEL, type Card, type Comment, type Person, reviseBlock } from "@/lib/review";
@@ -269,7 +270,7 @@ function LinkedCover({ s }: { s: Submission }) {
     <span className="flex flex-col gap-2">
       <CoverImg src={`/api/cover-preview?n=${s.number}`} label="Suggested cover" />
       <span className="max-w-[320px] truncate text-[12px] text-white/50" title={link}>
-        {stored ? "Saved on musicvolu.me when published · from " : "From "}<a href={link} target="_blank" rel="noopener noreferrer nofollow" className="underline">{(() => { try { return new URL(link).hostname; } catch { return "link"; } })()}</a>
+        {isUpload(link) ? (stored ? "Uploaded · saved on musicvolu.me when published" : "Uploaded by the sender") : <>{stored ? "Saved on musicvolu.me when published · from " : "From "}<a href={link} target="_blank" rel="noopener noreferrer nofollow" className="underline">{(() => { try { return new URL(link).hostname; } catch { return "link"; } })()}</a></>}
       </span>
     </span>
   );
