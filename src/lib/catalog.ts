@@ -333,6 +333,8 @@ export async function searchArtist(artistSlug: string, raw: string): Promise<Hit
   const sql = db();
   if (!sql) return null;
   if (!raw.trim()) return [];
-  const rows = await sql<DbHit[]>`select * from public.search_artist(${raw}, ${artistSlug}, 30)`;
+  // One letter would match most of a big artist's catalog: the page filters what it shows instead.
+  if (raw.trim().length < 2) return null;
+  const rows = await sql<DbHit[]>`select * from public.search_artist(${raw}, ${artistSlug}, 20)`;
   return rows.map(toHit);
 }
