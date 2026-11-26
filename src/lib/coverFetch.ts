@@ -10,6 +10,7 @@ import { lookup } from "node:dns";
 import https from "node:https";
 import { isIP } from "node:net";
 import sharp from "sharp";
+import { pendingPath, readPending } from "./coverStore";
 
 export const MAX_BYTES = 10 * 1024 * 1024;
 export const MIN_SIZE = 500;
@@ -112,9 +113,21 @@ export type CoverImage = { buffer: Buffer; width: number; height: number; format
 
 /** Fetches a cover link and checks it: JPEG, PNG or WebP, at least 500 × 500, under 10 MB. */
 export async function fetchCover(link: string): Promise<CoverImage> {
-  const u = checkLink(link);
-  if (typeof u === "string") throw new CoverError(u);
-  const buffer = await download(u);
+  const pending = pendingPath(link);
+  let buffer: Buffer;
+  if (pending) {
+    // One of our own uploads: read from storage directly.
+    try { buffer = await readPending(pending); } catch { throw new CoverError("That uploaded picture is no longer there. Upload it again."); }
+  } else {
+    const u = checkLink(link);
+    if (typeof u === "string") throw new CoverError(u);
+    buffer = await download(u);
+  }
+  return checkImage(buffer);
+}
+
+/** Checks picture bytes: JPEG, PNG or WebP, at least 500 × 500. */
+export async function checkImage(buffer: Buffer): Promise<CoverImage> {
   let meta: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
   try { meta = await sharp(buffer, { limitInputPixels: 50_000_000 }).metadata(); } catch { throw new CoverError("That link isn't an image we can read. Use a JPEG, PNG or WebP."); }
   if (!meta.format || !FORMATS.has(meta.format)) throw new CoverError("Use a JPEG, PNG or WebP image.");

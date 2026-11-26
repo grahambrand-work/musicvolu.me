@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import EditEntry from "@/components/EditEntry";
 import Header from "@/components/Header";
-import { lastDecision, reviseBlock } from "@/lib/review";
+import { can, lastDecision, reviseBlock } from "@/lib/review";
 import { getEditable, getSubmission } from "@/lib/submissions";
 import type { Values } from "@/lib/edits";
 import { getViewer } from "@/lib/viewer";
@@ -46,7 +46,7 @@ export default async function ReviseEdit({ params }: { params: Promise<{ number:
       <div className="hidden md:contents"><Header /></div>
       <EditEntry kind={s.entityType} slug={entry.slug} name={entry.name} tag={s.entityType === "release" ? String((entry.values as Record<string, unknown>).type ?? "") : TAG[s.entityType]}
         cover={entry.cover} round={s.entityType === "artist"} initial={suggested as Values} fixed={entry.fixed}
-        allowance={{ limit: null, left: null }}
+        allowance={{ limit: null, left: null }} canUpload={can.publish(viewer)}
         revise={{ number, base: entry.values, note: s.author.username === viewer.username ? s.note ?? "" : "", back }} />
     </>
   );

@@ -7,6 +7,7 @@ import { getArtist } from "@/lib/catalog";
 import type { NewKind, PickedArtist } from "@/lib/newEntry";
 import { allowanceFor, canPushFinal } from "@/lib/submissions";
 import { tierColor } from "@/lib/roles";
+import { can } from "@/lib/review";
 import { getViewer } from "@/lib/viewer";
 
 const KINDS: Record<string, NewKind> = { artist: "artist", release: "release", song: "song" };
@@ -40,7 +41,7 @@ export default async function NewEntryPage({ params, searchParams }: PageProps<"
     <>
       <Header />
       <NewEntryForm kind={kind} prefill={{ title: str("title"), artist, type: str("type") }} allowance={allowance}
-        pushColor={canPushFinal(viewer) ? tierColor(viewer) : undefined} />
+        pushColor={canPushFinal(viewer) ? tierColor(viewer) : undefined} canUpload={can.publish(viewer)} />
     </>
   );
 }

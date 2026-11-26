@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { can, lastDecision, type Status } from "@/lib/review";
 import { getViewer } from "@/lib/viewer";
 import { CoverError } from "@/lib/coverFetch";
-import { coverStorageReady, storeCover } from "@/lib/coverStore";
+import { cleanUpCover, coverStorageReady, storeCover } from "@/lib/coverStore";
 
 export type ActionResult = { error: string } | undefined;
 
@@ -40,16 +40,19 @@ export async function moveSubmission(number: number, move: Move): Promise<Action
   if (last && last.id !== v.id && !can.override(v, last)) {
     return { error: `${last.username} (a higher-tier editor) made the last decision here, so only someone of their tier or an admin can change it.` };
   }
+  let done = false;
   await sql.begin(async (tx) => {
     // Only moves it if nobody else did in the meantime.
-    const done = await tx`
+    const moved = await tx`
       update musicvolume.submissions set status = ${m.to}, updated_at = now(),
              reviewer_id = case when ${move === "pick_up"} then ${v.id}::uuid else reviewer_id end
        where id = ${s.id} and status = ${s.status}`;
-    if (!done.count) throw new Error("moved");
+    if (!moved.count) throw new Error("moved");
+    done = true;
     await tx`insert into musicvolume.submission_events (submission_id, member_id, action, from_status, to_status, detail)
              values (${s.id}, ${v.id}, 'status', ${s.status}, ${m.to}, ${tx.json({ move })})`;
   }).catch((e) => { if (e.message !== "moved") throw e; });
+  if (done && move === "reject") await cleanUpCover(number, false);
   revalidatePath("/review", "layout");
   return undefined;
 }
@@ -126,6 +129,7 @@ export async function publishSubmission(number: number, coverSha?: string): Prom
       if (c?.has_cover) await tx`select musicvolume.apply_cover(${number}, ${v.id})`;
       return r;
     });
+    await cleanUpCover(number, true);
     revalidatePath("/", "layout");
     return { href: `/${r.type}/${r.slug}` };
   } catch (e) {

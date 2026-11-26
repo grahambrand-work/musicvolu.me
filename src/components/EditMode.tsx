@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { Kind } from "@/lib/edits";
 import { allowanceFor, canPushFinal, getEditable } from "@/lib/submissions";
 import { tierColor } from "@/lib/roles";
+import { can } from "@/lib/review";
 import { getViewer } from "@/lib/viewer";
 import EditEntry from "./EditEntry";
 import Header from "./Header";
@@ -24,7 +25,7 @@ export default async function EditMode({ kind, slug, focus, tag, children }: {
       <div className="hidden md:contents"><Header /></div>
       <EditEntry kind={kind} slug={entry.slug} name={entry.name} tag={tag ?? TAG[kind]} cover={entry.cover} round={kind === "artist"}
         initial={entry.values} fixed={entry.fixed} allowance={allowance} focus={focus}
-        pushColor={canPushFinal(viewer) ? tierColor(viewer) : undefined}>
+        pushColor={canPushFinal(viewer) ? tierColor(viewer) : undefined} canUpload={can.publish(viewer)}>
         {children}
       </EditEntry>
     </>
